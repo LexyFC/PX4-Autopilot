@@ -99,6 +99,9 @@ FixedWingGuidanceControl::parameters_update()
 void
 FixedWingGuidanceControl::vehicle_control_mode_poll()
 {
+	if (_control_mode_sub.updated()) {
+		_control_mode_sub.copy(&_control_mode);
+	}
 }
 
 void
@@ -294,6 +297,13 @@ FixedWingGuidanceControl::Run()
 
 		vehicle_global_position_s gpos;
 
+		airspeed_poll();
+		manual_control_setpoint_poll();
+		vehicle_attitude_poll();
+		vehicle_control_mode_poll();
+		wind_poll(now);
+
+
 		if (_global_pos_sub.update(&gpos)) {
 			_current_latitude = gpos.lat;
 			_current_longitude = gpos.lon;
@@ -387,12 +397,6 @@ FixedWingGuidanceControl::Run()
 				_position_setpoint_current_valid = valid_setpoint;
 			}
 		}
-
-		airspeed_poll();
-		manual_control_setpoint_poll();
-		vehicle_attitude_poll();
-		vehicle_control_mode_poll();
-		wind_poll(now);
 
 		if (_vehicle_land_detected_sub.updated()) {
 			vehicle_land_detected_s vehicle_land_detected;
