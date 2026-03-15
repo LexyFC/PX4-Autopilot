@@ -31,6 +31,8 @@ The [eProsima micro XRCE-DDS _agent_](https://github.com/eProsima/Micro-XRCE-DDS
 The agent itself has no dependency on client-side code and can be built and/or installed independent of PX4 or ROS.
 
 Code that wants to subscribe/publish to PX4 does have a dependency on client-side code; it requires uORB message definitions that match those used to create the PX4 uXRCE-DDS client so that it can interpret the messages.
+An exception to the above rule is made by the _versioned_ PX4 msgs.
+Please refer to the [PX4 ROS 2 Message Transition Node](../ros2/px4_ros2_msg_translation_node.md) to know more about it.
 
 ## Code Generation
 
