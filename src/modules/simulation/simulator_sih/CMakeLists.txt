@@ -52,6 +52,7 @@ if(PX4_PLATFORM MATCHES "posix")
 	set(models
 		airplane
 		quadx
+		quadx_vision
 		xvert
 		standard_vtol
 		hex
