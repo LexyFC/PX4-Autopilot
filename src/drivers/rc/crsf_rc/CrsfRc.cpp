@@ -564,7 +564,7 @@ bool CrsfRc::BindCRSF()
 		0xE8,  // packet CRC8
 	};
 
-	return _uart->write((void *)bind_frame, sizeof(bind_frame));
+	return _uart->write((void *)bind_frame, sizeof(bind_frame)) == sizeof(bind_frame);
 }
 
 int CrsfRc::print_status()

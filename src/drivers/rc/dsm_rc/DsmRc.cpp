@@ -182,9 +182,9 @@ void DsmRc::Run()
 						dsm_bind_pulses = DSMX8_BIND_PULSES;
 					}
 
-					bind_spektrum(dsm_bind_pulses);
-
-					cmd_ret = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
+					if (dsm_bind_pulses > 0 && bind_spektrum(dsm_bind_pulses)) {
+						cmd_ret = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
+					}
 				}
 
 			} else {
