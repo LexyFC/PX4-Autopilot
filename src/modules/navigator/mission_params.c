@@ -62,6 +62,7 @@ PARAM_DEFINE_FLOAT(MIS_TAKEOFF_ALT, 2.5f);
  *
  * Specifies if a mission has to contain a takeoff and/or mission landing.
  * Validity of configured takeoffs/landings is checked independently of the setting here.
+ * Takeoff requirement is dropped when in-air.
  *
  * @value 0 No requirements
  * @value 1 Require a takeoff

@@ -540,7 +540,7 @@ bool FeasibilityChecker::checkTakeoffLandAvailable()
 		break;
 
 	case 1:
-		result = _has_takeoff;
+		result = _has_takeoff || !_is_landed;
 
 		if (!result) {
 			mavlink_log_critical(_mavlink_log_pub, "Mission rejected: Takeoff waypoint required.\t");
@@ -563,7 +563,7 @@ bool FeasibilityChecker::checkTakeoffLandAvailable()
 		break;
 
 	case 3:
-		result = _has_takeoff && _landing_valid;
+		result = (_has_takeoff || !_is_landed) && _landing_valid;
 
 		if (!result) {
 			mavlink_log_critical(_mavlink_log_pub, "Mission rejected: Takeoff or Landing item missing.\t");
@@ -574,7 +574,18 @@ bool FeasibilityChecker::checkTakeoffLandAvailable()
 		break;
 
 	case 4:
-		result = hasMissionBothOrNeitherTakeoffAndLanding();
+		if (_is_landed) {
+			result = hasMissionBothOrNeitherTakeoffAndLanding();
+
+		} else {
+			result = _landing_valid;
+
+			if (!result) {
+				mavlink_log_critical(_mavlink_log_pub, "Mission rejected: Landing waypoint/pattern required.");
+				events::send(events::ID("feasibility_mis_type_4_in_air"), {events::Log::Error, events::LogInternal::Info},
+					     "Mission rejected: Landing waypoint/pattern required");
+			}
+		}
 
 		break;
 
