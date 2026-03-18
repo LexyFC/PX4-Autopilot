@@ -199,8 +199,8 @@ public:
 
 	void set_in_transition_to_fw(bool in_transition) { _control_status.flags.in_transition_to_fw = in_transition; }
 
-	// set flag if static pressure rise due to ground effect is expected
-	// use _params.ekf2_gnd_eff_dz to adjust for expected rise in static pressure
+	// set flag if static pressure transients due to ground effect are expected
+	// use _params.ekf2_gnd_eff_dz to adjust for expected static pressure transients
 	// flag will clear after GNDEFFECT_TIMEOUT uSec
 	void set_gnd_effect()
 	{
