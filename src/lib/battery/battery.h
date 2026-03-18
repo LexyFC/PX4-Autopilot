@@ -134,8 +134,6 @@ public:
 	void updateDt(const hrt_abstime &timestamp);
 
 protected:
-	static constexpr float LITHIUM_BATTERY_RECOGNITION_VOLTAGE = 2.1f;
-
 	struct {
 		param_t v_empty;
 		param_t v_charged;
@@ -201,6 +199,10 @@ private:
 	bool _armed{false};
 	bool _vehicle_status_is_fw{false};
 	hrt_abstime _last_unconnected_timestamp{0};
+
+	static constexpr float LITHIUM_BATTERY_RECOGNITION_VOLTAGE = 2.1f;
+	static constexpr float MAX_LOW_VOLTAGE_TIME_S = 0.2f;
+	hrt_abstime _last_sufficient_voltage_timestamp{0};
 
 	// Internal Resistance estimation
 	void updateInternalResistanceEstimation(const float voltage_v, const float current_a);

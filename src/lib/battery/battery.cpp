@@ -98,7 +98,10 @@ Battery::Battery(int index, ModuleParams *parent, const int sample_interval_us, 
 
 void Battery::updateVoltage(const float voltage_v)
 {
-	_voltage_v = voltage_v;
+	if (voltage_v >= LITHIUM_BATTERY_RECOGNITION_VOLTAGE) {
+		_voltage_v = voltage_v;
+		_last_sufficient_voltage_timestamp = hrt_absolute_time();
+	}
 }
 
 void Battery::updateCurrent(const float current_a)
@@ -116,7 +119,8 @@ void Battery::updateBatteryStatus(const hrt_abstime &timestamp)
 	updateDt(timestamp);
 
 	// Require minimum voltage otherwise override connected status
-	if (_voltage_v < LITHIUM_BATTERY_RECOGNITION_VOLTAGE) {
+	// Tolerate a small number of low-voltage samples (common I2C comm failure) before disconnection
+	if (timestamp - _last_sufficient_voltage_timestamp > MAX_LOW_VOLTAGE_TIME_S * 1_s) {
 		_connected = false;
 	}
 
