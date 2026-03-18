@@ -195,18 +195,14 @@ void CrsfRc::Run()
 		}
 	}
 
-	// vehicle command
-	vehicle_command_s vcmd;
+	vehicle_command_s vcmd{};
 
 	if (_vehicle_cmd_sub.update(&vcmd)) {
-		// Check for a pairing command
 		if (vcmd.command == vehicle_command_s::VEHICLE_CMD_START_RX_PAIR) {
-
 			uint8_t cmd_ret = vehicle_command_ack_s::VEHICLE_CMD_RESULT_UNSUPPORTED;
 
 			if (!_is_singlewire && !_armed) {
 				if ((int)vcmd.param1 == vehicle_command_s::RC_TYPE_CRSF) {
-					// CRSF binding command
 					if (BindCRSF()) {
 						cmd_ret = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
 					}

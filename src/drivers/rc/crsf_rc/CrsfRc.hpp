@@ -147,7 +147,6 @@ private:
 	};
 
 	enum class crsf_address_t : uint8_t {
-		broadcast = 0x00,
 		flight_controller = 0xC8,
 		crsf_receiver = 0xEC,
 		crsf_transmitter = 0xEE
