@@ -38,7 +38,6 @@
 
 #pragma once
 
-
 #include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/getopt.h>
 #include <drivers/device/i2c.h>
@@ -48,99 +47,15 @@
 #include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/parameter_update.h>
 #include <px4_platform_common/i2c_spi_buses.h>
+#include <lib/drivers/ina_common/ina_common.h>
 
 using namespace time_literals;
 
-/* Configuration Constants */
-#define INA231_BASEADDR 	                    0x44 /* 7-bit address. 8-bit address is 0x88 */
-// If initialization is forced (with the -f flag on the command line), but it fails, the drive will try again to
-// connect to the INA231 every this many microseconds
-#define INA231_INIT_RETRY_INTERVAL_US			500000
-
-/* INA231 Registers addresses */
-#define INA231_REG_CONFIGURATION             (0x00)
-#define INA231_REG_SHUNTVOLTAGE              (0x01)
-#define INA231_REG_BUSVOLTAGE                (0x02)
-#define INA231_REG_POWER                     (0x03)
-#define INA231_REG_CURRENT                   (0x04)
-#define INA231_REG_CALIBRATION               (0x05)
-#define INA231_REG_MASKENABLE                (0x06)
-#define INA231_REG_ALERTLIMIT                (0x07)
-
-/* INA231 Configuration Register */
-#define INA231_MODE_SHIFTS                   (0)
-#define INA231_MODE_MASK                     (7 << INA231_MODE_SHIFTS)
-#define INA231_MODE_SHUTDOWN                 (0 << INA231_MODE_SHIFTS)
-#define INA231_MODE_SHUNT_TRIG               (1 << INA231_MODE_SHIFTS)
-#define INA231_MODE_BUS_TRIG                 (2 << INA231_MODE_SHIFTS)
-#define INA231_MODE_SHUNT_BUS_TRIG           (3 << INA231_MODE_SHIFTS)
-#define INA231_MODE_ADC_OFF                  (4 << INA231_MODE_SHIFTS)
-#define INA231_MODE_SHUNT_CONT               (5 << INA231_MODE_SHIFTS)
-#define INA231_MODE_BUS_CONT                 (6 << INA231_MODE_SHIFTS)
-#define INA231_MODE_SHUNT_BUS_CONT           (7 << INA231_MODE_SHIFTS)
-
-#define INA231_VSHCT_SHIFTS                  (3)
-#define INA231_VSHCT_MASK                    (7 << INA231_VSHCT_SHIFTS)
-#define INA231_VSHCT_140US                   (0 << INA231_VSHCT_SHIFTS)
-#define INA231_VSHCT_204US                   (1 << INA231_VSHCT_SHIFTS)
-#define INA231_VSHCT_332US                   (2 << INA231_VSHCT_SHIFTS)
-#define INA231_VSHCT_588US                   (3 << INA231_VSHCT_SHIFTS)
-#define INA231_VSHCT_1100US                  (4 << INA231_VSHCT_SHIFTS)
-#define INA231_VSHCT_2116US                  (5 << INA231_VSHCT_SHIFTS)
-#define INA231_VSHCT_4156US                  (6 << INA231_VSHCT_SHIFTS)
-#define INA231_VSHCT_8244US                  (7 << INA231_VSHCT_SHIFTS)
-
-#define INA231_VBUSCT_SHIFTS                 (6)
-#define INA231_VBUSCT_MASK                   (7 << INA231_VBUSCT_SHIFTS)
-#define INA231_VBUSCT_140US                  (0 << INA231_VBUSCT_SHIFTS)
-#define INA231_VBUSCT_204US                  (1 << INA231_VBUSCT_SHIFTS)
-#define INA231_VBUSCT_332US                  (2 << INA231_VBUSCT_SHIFTS)
-#define INA231_VBUSCT_588US                  (3 << INA231_VBUSCT_SHIFTS)
-#define INA231_VBUSCT_1100US                 (4 << INA231_VBUSCT_SHIFTS)
-#define INA231_VBUSCT_2116US                 (5 << INA231_VBUSCT_SHIFTS)
-#define INA231_VBUSCT_4156US                 (6 << INA231_VBUSCT_SHIFTS)
-#define INA231_VBUSCT_8244US                 (7 << INA231_VBUSCT_SHIFTS)
-
-#define INA231_AVERAGES_SHIFTS                (9)
-#define INA231_AVERAGES_MASK                  (7 << INA231_AVERAGES_SHIFTS)
-#define INA231_AVERAGES_1                     (0 << INA231_AVERAGES_SHIFTS)
-#define INA231_AVERAGES_4                     (1 << INA231_AVERAGES_SHIFTS)
-#define INA231_AVERAGES_16                    (2 << INA231_AVERAGES_SHIFTS)
-#define INA231_AVERAGES_64                    (3 << INA231_AVERAGES_SHIFTS)
-#define INA231_AVERAGES_128                   (4 << INA231_AVERAGES_SHIFTS)
-#define INA231_AVERAGES_256                   (5 << INA231_AVERAGES_SHIFTS)
-#define INA231_AVERAGES_512                   (6 << INA231_AVERAGES_SHIFTS)
-#define INA231_AVERAGES_1024                  (7 << INA231_AVERAGES_SHIFTS)
-
-#define INA231_CONFIG (INA231_MODE_SHUNT_BUS_CONT | INA231_VSHCT_1100US | INA231_VBUSCT_1100US | INA231_AVERAGES_16)
-
-#define INA231_RST                            (1 << 15)
-
-/* INA231 Enable / Mask Register */
-
-#define INA231_LEN                           (1 << 0)
-#define INA231_APOL                          (1 << 1)
-#define INA231_OVF                           (1 << 2)
-#define INA231_CVRF                          (1 << 3)
-#define INA231_AFF                           (1 << 4)
-
-#define INA231_CNVR                          (1 << 10)
-#define INA231_POL                           (1 << 11)
-#define INA231_BUL                           (1 << 12)
-#define INA231_BOL                           (1 << 13)
-#define INA231_SUL                           (1 << 14)
-#define INA231_SOL                           (1 << 15)
-
-#define INA231_SAMPLE_FREQUENCY_HZ            10
-#define INA231_SAMPLE_INTERVAL_US             (1_s / INA231_SAMPLE_FREQUENCY_HZ)
-#define INA231_CONVERSION_INTERVAL            (INA231_SAMPLE_INTERVAL_US - 7)
-#define MAX_CURRENT                           90.0f     /* 90 Amps */
-#define DN_MAX                                32768.0f  /* 2^15 */
-#define INA231_CONST                          0.00512f  /* is an internal fixed value used to ensure scaling is maintained properly  */
-#define INA231_SHUNT                          0.0005f   /* Shunt is 500 uOhm */
-#define INA231_VSCALE                         0.00125f  /* LSB of voltage is 1.25 mV  */
-
-#define swap16(w)                       __builtin_bswap16((w))
+/* INA231-specific constants */
+#define INA231_BASEADDR                          0x44 /* 7-bit address. 8-bit address is 0x88 */
+#define INA231_MAX_CURRENT                       90.0f    /* 90 Amps */
+#define INA231_SHUNT                             0.0005f  /* Shunt is 500 uOhm */
+#define INA231_DEFAULT_CONFIG  (INA_COMMON_MODE_SHUNT_BUS_CONT | INA_COMMON_VSHCT_1100US | INA_COMMON_VBUSCT_1100US | INA_COMMON_AVERAGES_16)
 
 class INA231 : public device::I2C, public ModuleParams, public I2CSPIDriver<INA231>
 {
@@ -157,7 +72,7 @@ public:
 
 	/**
 	 * Tries to call the init() function. If it fails, then it will schedule to retry again in
-	 * INA231_INIT_RETRY_INTERVAL_US microseconds. It will keep retrying at this interval until initialization succeeds.
+	 * INA_COMMON_INIT_RETRY_INTERVAL_US microseconds. It will keep retrying at this interval until initialization succeeds.
 	 *
 	 * @return PX4_OK if initialization succeeded on the first try. Negative value otherwise.
 	 */
@@ -172,48 +87,28 @@ protected:
 	int	  		probe() override;
 
 private:
-	bool			        _sensor_ok{false};
-	unsigned                        _measure_interval{0};
-	bool			        _collect_phase{false};
-	bool 					_initialized{false};
-
 	perf_counter_t		_sample_perf;
 	perf_counter_t		_comms_errors;
 	perf_counter_t 		_collection_errors;
 	perf_counter_t 		_measure_errors;
 
-	int16_t           _bus_voltage{0};
-	int16_t           _power{0};
-	int16_t           _current{0};
-	int16_t           _shunt{0};
-	int16_t           _cal{0};
-	bool              _mode_triggered{false};
-
-	float             _max_current{MAX_CURRENT};
-	float             _rshunt{INA231_SHUNT};
-	uint16_t          _config{INA231_CONFIG};
-	float             _current_lsb{_max_current / DN_MAX};
-	float             _power_lsb{25.0f * _current_lsb};
+	unsigned              _measure_interval{0};
+	bool                  _collect_phase{false};
 
 	Battery 		  _battery;
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
-	int read(uint8_t address, int16_t &data);
-	int write(uint8_t address, uint16_t data);
+	INACommon             _common;
 
-	uint8_t _connected{0};
-	// returns state unchanged
-	bool setConnected(bool state);
+	static int i2c_transfer_wrapper(void *context, const uint8_t *send, unsigned send_len,
+					uint8_t *recv, unsigned recv_len)
+	{
+		return static_cast<INA231 *>(context)->transfer(send, send_len, recv, recv_len);
+	}
 
 	/**
 	* Initialise the automatic measurement state machine and start it.
-	*
-	* @note This function is called at open and error time.  It might make sense
-	*       to make it more aggressive about resetting the bus in case of errors.
 	*/
 	void				      start();
-
-	int					     measure();
-	int					     collect();
 
 };

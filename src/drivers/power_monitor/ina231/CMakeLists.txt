@@ -42,5 +42,6 @@ px4_add_module(
 		ina231_params.yaml
 	DEPENDS
 		battery
+		ina_common
 		px4_work_queue
 	)
