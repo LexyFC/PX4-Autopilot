@@ -227,9 +227,16 @@ static calibrate_return check_calibration_result(float offset_x, float offset_y,
 	return calibrate_return_ok;
 }
 
-static float get_sphere_radius()
+enum class SphereRadiusSource { WMM, DEFAULT };
+
+struct SphereRadius {
+	float value;
+	SphereRadiusSource source;
+};
+
+static SphereRadius get_sphere_radius()
 {
-	// if GPS is available use real field intensity from world magnetic model
+	// if GNSS is available use real field intensity from the World Magnetic Model (WMM)
 	uORB::SubscriptionMultiArray<sensor_gps_s, 3> gps_subs{ORB_ID::vehicle_gps_position};
 
 	for (auto &gps_sub : gps_subs) {
@@ -237,13 +244,13 @@ static float get_sphere_radius()
 
 		if (gps_sub.copy(&gps)) {
 			if (hrt_elapsed_time(&gps.timestamp) < 100_s && (gps.fix_type >= 2) && (gps.eph < 1000)) {
-				// magnetic field data returned by the geo library using the current GPS position
-				return get_mag_strength_gauss(gps.latitude_deg, gps.longitude_deg);
+				// magnetic field data returned by the geo library using the current GNSS position (WMM)
+				return {get_mag_strength_gauss(gps.latitude_deg, gps.longitude_deg), SphereRadiusSource::WMM};
 			}
 		}
 	}
 
-	return MAG_SPHERE_RADIUS_DEFAULT;
+	return {MAG_SPHERE_RADIUS_DEFAULT, SphereRadiusSource::DEFAULT};
 }
 
 static calibrate_return mag_calibration_worker(detect_orientation_return orientation, void *data)
@@ -253,7 +260,7 @@ static calibrate_return mag_calibration_worker(detect_orientation_return orienta
 
 	mag_worker_data_t *worker_data = (mag_worker_data_t *)(data);
 
-	float mag_sphere_radius = get_sphere_radius();
+	const SphereRadius mag_sphere_radius = get_sphere_radius();
 
 	// notify user to start rotating
 	set_tune(tune_control_s::TUNE_ID_SINGLE_BEEP);
@@ -386,7 +393,7 @@ static calibrate_return mag_calibration_worker(detect_orientation_return orienta
 									    worker_data->x[cur_mag], worker_data->y[cur_mag], worker_data->z[cur_mag],
 									    worker_data->calibration_counter_total[cur_mag],
 									    worker_data->calibration_sides * worker_data->calibration_points_perside,
-									    mag_sphere_radius);
+									    mag_sphere_radius.value);
 
 						if (!reject) {
 							new_samples[cur_mag] = Vector3f{mag.x, mag.y, mag.z};
@@ -615,10 +622,10 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub, int32_t cal_ma
 	Vector3f offdiag[MAX_MAGS];
 	float sphere_radius[MAX_MAGS];
 
-	const float mag_sphere_radius = get_sphere_radius();
+	const SphereRadius mag_sphere_radius = get_sphere_radius();
 
 	for (size_t cur_mag = 0; cur_mag < MAX_MAGS; cur_mag++) {
-		sphere_radius[cur_mag] = mag_sphere_radius;
+		sphere_radius[cur_mag] = mag_sphere_radius.value;
 		sphere[cur_mag].zero();
 		diag[cur_mag] = Vector3f{1.f, 1.f, 1.f};
 		offdiag[cur_mag].zero();
