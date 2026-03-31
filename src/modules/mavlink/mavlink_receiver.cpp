@@ -3272,6 +3272,9 @@ MavlinkReceiver::run()
 			updateParams();
 		}
 
+		// Reload signing key if another instance updated it
+		_mavlink.check_signing_key_dirty();
+
 		int ret = poll(&fds[0], 1, timeout);
 
 		if (ret > 0) {
