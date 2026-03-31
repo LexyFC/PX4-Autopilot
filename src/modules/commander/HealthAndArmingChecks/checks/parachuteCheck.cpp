@@ -46,6 +46,10 @@ void ParachuteChecks::checkAndReport(const Context &context, Report &reporter)
 		!context.status().parachute_system_present ||
 		!context.status().parachute_system_healthy;
 
+	const bool warn_only = (_param_com_para_act.get() == 0);
+	const events::Log log_level = warn_only ? events::Log::Warning : events::Log::Error;
+	const NavModes affected_modes = warn_only ? NavModes::None : NavModes::All;
+
 	if (!context.status().parachute_system_present) {
 		/* EVENT
 		 * @description
@@ -55,11 +59,16 @@ void ParachuteChecks::checkAndReport(const Context &context, Report &reporter)
 		 * Enabled by <param>COM_PARACHUTE</param>
 		 * </profile>
 		 */
-		reporter.healthFailure(NavModes::All, health_component_t::parachute, events::ID("check_parachute_missing"),
-				       events::Log::Error, "Parachute system missing");
+		reporter.healthFailure(affected_modes, health_component_t::parachute, events::ID("check_parachute_missing"),
+				       log_level, "Parachute system missing");
 
 		if (reporter.mavlink_log_pub()) {
-			mavlink_log_critical(reporter.mavlink_log_pub(), "Preflight Fail: Parachute system missing");
+			if (warn_only) {
+				mavlink_log_warning(reporter.mavlink_log_pub(), "Parachute system missing");
+
+			} else {
+				mavlink_log_critical(reporter.mavlink_log_pub(), "Preflight Fail: Parachute system missing");
+			}
 		}
 
 	} else if (!context.status().parachute_system_healthy) {
@@ -72,11 +81,16 @@ void ParachuteChecks::checkAndReport(const Context &context, Report &reporter)
 		 * Enabled by <param>COM_PARACHUTE</param>
 		 * </profile>
 		 */
-		reporter.healthFailure(NavModes::All, health_component_t::parachute, events::ID("check_parachute_unhealthy"),
-				       events::Log::Error, "Parachute system not ready");
+		reporter.healthFailure(affected_modes, health_component_t::parachute, events::ID("check_parachute_unhealthy"),
+				       log_level, "Parachute system not ready");
 
 		if (reporter.mavlink_log_pub()) {
-			mavlink_log_critical(reporter.mavlink_log_pub(), "Preflight Fail: Parachute system not ready");
+			if (warn_only) {
+				mavlink_log_warning(reporter.mavlink_log_pub(), "Parachute system not ready");
+
+			} else {
+				mavlink_log_critical(reporter.mavlink_log_pub(), "Preflight Fail: Parachute system not ready");
+			}
 		}
 	}
 

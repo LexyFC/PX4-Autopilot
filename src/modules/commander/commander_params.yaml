@@ -513,6 +513,19 @@ parameters:
         short: Require MAVLink parachute system to be present and healthy
       type: boolean
       default: 0
+    COM_PARA_ACT:
+      description:
+        short: Parachute system unhealthy failsafe action
+        long: |-
+          Action taken when the parachute system is enabled (COM_PARACHUTE=1) but reports
+          missing or unhealthy status during flight.
+      type: enum
+      values:
+        0: Warning
+        1: Land
+        2: Return
+      default: 2
+      increment: 1
     COM_ARM_CHK_ESCS:
       description:
         short: Enable checks on ESCs that report telemetry

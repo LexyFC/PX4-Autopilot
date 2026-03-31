@@ -412,6 +412,30 @@ FailsafeBase::ActionOptions Failsafe::fromPosLowActParam(int param_value)
 	return options;
 }
 
+FailsafeBase::ActionOptions Failsafe::fromParachuteActParam(int param_value)
+{
+	ActionOptions options{};
+	options.clear_condition = ClearCondition::OnModeChangeOrDisarm;
+
+	switch (parachute_unhealthy_failsafe_mode(param_value)) {
+	case parachute_unhealthy_failsafe_mode::Warning:
+	default:
+		options.action = Action::Warn;
+		options.clear_condition = ClearCondition::WhenConditionClears;
+		break;
+
+	case parachute_unhealthy_failsafe_mode::Land:
+		options.action = Action::Land;
+		break;
+
+	case parachute_unhealthy_failsafe_mode::Return:
+		options.action = Action::RTL;
+		break;
+	}
+
+	return options;
+}
+
 FailsafeBase::ActionOptions Failsafe::fromRemainingFlightTimeLowActParam(int param_value)
 {
 	ActionOptions options{};
@@ -575,7 +599,7 @@ void Failsafe::checkStateAndMode(const hrt_abstime &time_us, const State &state,
 	}
 
 	// Parachute system health failsafe
-	CHECK_FAILSAFE(status_flags, parachute_unhealthy, Action::RTL);
+	CHECK_FAILSAFE(status_flags, parachute_unhealthy, ActionOptions(fromParachuteActParam(_param_com_parachute_act.get())));
 
 	// Battery low failsafe
 	// If battery was low and arming was allowed through COM_ARM_BAT_MIN, don't failsafe immediately for the current low battery warning state
