@@ -513,7 +513,10 @@ Mavlink::forward_message(const mavlink_message_t *msg, Mavlink *self)
 		return;
 	}
 
-	LockGuard lg{mavlink_module_mutex};
+	// No mutex needed: instances can't be destroyed while receiver threads run
+	// (destroy_all_instances() stops all threads first). Pointer reads are
+	// naturally atomic on aligned architectures. pass_message() has its own
+	// per-instance _message_buffer_mutex for the ring buffer.
 
 	for (Mavlink *inst : mavlink_module_instances) {
 		if (inst && (inst != self) && (inst->get_forwarding_on())) {

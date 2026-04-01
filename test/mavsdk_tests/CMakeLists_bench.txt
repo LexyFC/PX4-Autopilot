@@ -1,0 +1,26 @@
+cmake_minimum_required(VERSION 3.5.1)
+
+project(mavlink_forwarding_bench CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+find_package(MAVSDK REQUIRED)
+find_package(Threads REQUIRED)
+
+add_executable(mavlink_forwarding_bench
+    test_mavlink_forwarding_bench.cpp
+)
+
+target_link_libraries(mavlink_forwarding_bench
+    MAVSDK::mavsdk
+    ${CMAKE_THREAD_LIBS_INIT}
+)
+
+target_compile_options(mavlink_forwarding_bench
+    PRIVATE
+        -Wall
+        -Wextra
+        -Werror
+)
