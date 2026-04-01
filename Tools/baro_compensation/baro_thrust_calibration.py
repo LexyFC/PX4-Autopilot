@@ -159,10 +159,15 @@ def extract_ekf_z(ulog):
     d = get_topic(ulog, "vehicle_local_position")
     if d is None:
         return None
-    return {
+    result = {
         "time_s": us_to_s(d.data["timestamp"], ulog.start_timestamp),
         "z": d.data["z"],
     }
+    if "vz" in d.data:
+        result["vz"] = d.data["vz"]
+    if "vx" in d.data and "vy" in d.data:
+        result["vxy"] = np.sqrt(d.data["vx"]**2 + d.data["vy"]**2)
+    return result
 
 
 def extract_ekf_baro_obs(ulog):
@@ -311,9 +316,47 @@ class CfRls:
         return float(np.sqrt(max(self._thrust_var, 0.0)))
 
 
+def build_estimation_mask(baro_t, armed_start, armed_end, landed,
+                          ekf_z=None, range_data=None):
+    """Build sample mask matching firmware hard + soft guards.
+
+    Hard gates: armed AND not landed.
+    Soft gates (skip RLS but keep CF in firmware — here we skip both since
+    the offline replay doesn't separate CF from RLS per-sample):
+      - |vz| > 2 m/s
+      - vxy > 5 m/s
+      - range sensor < 0.5 m (ground effect proximity)
+    """
+    armed = (baro_t >= armed_start) & (baro_t <= armed_end)
+
+    if landed is not None:
+        is_landed = (np.interp(baro_t, landed["time_s"],
+                               landed["landed"].astype(float)) > 0.5)
+    else:
+        is_landed = np.zeros(len(baro_t), dtype=bool)
+
+    mask = armed & ~is_landed
+
+    if ekf_z is not None and "vz" in ekf_z:
+        vz = np.interp(baro_t, ekf_z["time_s"], ekf_z["vz"])
+        mask &= np.abs(vz) <= 2.0
+
+    if ekf_z is not None and "vxy" in ekf_z:
+        vxy = np.interp(baro_t, ekf_z["time_s"], ekf_z["vxy"])
+        mask &= vxy <= 5.0
+
+    if range_data is not None:
+        rng = np.interp(baro_t, range_data["time_s"],
+                        range_data["distance_m"])
+        mask &= rng > 0.5
+
+    return mask
+
+
 def run_offline_cf_rls(baro, accel, attitude, thrust, landed,
                        armed_start, armed_end,
-                       cf_bandwidth=None, rls_lambda=None):
+                       cf_bandwidth=None, rls_lambda=None,
+                       ekf_z=None, range_data=None):
     """Replay CF+RLS on logged sensor data.  Returns K trace and residuals."""
     baro_t = baro["time_s"]
     baro_alt = baro["alt_m"]
@@ -329,14 +372,8 @@ def run_offline_cf_rls(baro, accel, attitude, thrust, landed,
     accel_up = np.interp(baro_t, accel["time_s"], accel_up_all)
     thrust_interp = np.interp(baro_t, thrust["time_s"], thrust["thrust"])
 
-    # Airborne mask: armed AND not landed  (matches firmware hard gates)
-    armed = (baro_t >= armed_start) & (baro_t <= armed_end)
-    if landed is not None:
-        is_landed = (np.interp(baro_t, landed["time_s"],
-                               landed["landed"].astype(float)) > 0.5)
-    else:
-        is_landed = np.zeros(len(baro_t), dtype=bool)
-    airborne = armed & ~is_landed
+    airborne = build_estimation_mask(baro_t, armed_start, armed_end, landed,
+                                     ekf_z, range_data)
 
     est = CfRls(cf_bandwidth=cf_bandwidth, rls_lambda=rls_lambda)
     n = len(baro_t)
@@ -464,7 +501,8 @@ def run_range_calibration(baro, range_data, thrust,
 # ---------------------------------------------------------------------------
 
 def sweep_cf_params(baro, accel, attitude, thrust, landed,
-                    armed_start, armed_end, range_cal, existing_pcoef):
+                    armed_start, armed_end, range_cal, existing_pcoef,
+                    ekf_z=None, range_data=None):
     """Sweep CF bandwidth at two lambda values, evaluate against range truth."""
     bandwidths = np.logspace(np.log10(0.01), np.log10(1.0), 30)
     lambdas = [("lambda_0.998", 0.998), ("lambda_1.0", 1.0)]
@@ -482,13 +520,9 @@ def sweep_cf_params(baro, accel, attitude, thrust, landed,
     accel_up = np.interp(baro_t, accel["time_s"], accel_up_all)
     thrust_interp = np.interp(baro_t, thrust["time_s"], thrust["thrust"])
 
-    armed = (baro_t >= armed_start) & (baro_t <= armed_end)
-    if landed is not None:
-        is_landed = (np.interp(baro_t, landed["time_s"],
-                               landed["landed"].astype(float)) > 0.5)
-    else:
-        is_landed = np.zeros(len(baro_t), dtype=bool)
-    airborne_idx = np.where(armed & ~is_landed)[0]
+    mask = build_estimation_mask(baro_t, armed_start, armed_end, landed,
+                                 ekf_z, range_data)
+    airborne_idx = np.where(mask)[0]
 
     raw_err = range_cal["raw_err_fit"]
     thr_fit = range_cal["thrust_fit"]
@@ -1009,7 +1043,8 @@ def main():
     offline = None
     if accel is not None and attitude is not None:
         offline = run_offline_cf_rls(baro, accel, attitude, thrust, landed,
-                                     armed_start, armed_end)
+                                     armed_start, armed_end,
+                                     ekf_z=ekf_z, range_data=range_data)
         summary.append(f"Offline CF+RLS:")
         summary.append(f"  Final K = {offline['final_k']:.3f}")
         summary.append(f"  Total PCOEF: {existing_pcoef:+.2f} "
@@ -1099,7 +1134,8 @@ def main():
         print("\nSweeping CF bandwidth...")
         sweep = sweep_cf_params(baro, accel, attitude, thrust, landed,
                                 armed_start, armed_end, range_cal,
-                                existing_pcoef)
+                                existing_pcoef,
+                                ekf_z=ekf_z, range_data=range_data)
         fig, best_bw, min_bw, min_std = plot_cf_tuning(
             sweep, range_cal, existing_pcoef)
         figures.append(fig)
