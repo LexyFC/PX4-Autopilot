@@ -25,7 +25,7 @@ The online estimator identifies `SENS_BARO_PCOEF` automatically during flight an
 
 ### How It Works
 
-A complementary filter (CF) fuses barometer altitude with double-integrated accelerometer data at a very low crossover frequency (default 0.1 Hz).
+A complementary filter (CF) fuses barometer altitude with double-integrated accelerometer data at a very low crossover frequency (default 0.05 Hz).
 The CF trusts the accelerometer for fast altitude changes and the barometer for slow drift, so the CF residual (baro minus accel prediction) isolates thrust-correlated pressure error while rejecting real altitude changes.
 
 A Recursive Least Squares (RLS) estimator then fits the linear model `residual = K * thrust + bias` to identify the gain K.

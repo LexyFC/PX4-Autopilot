@@ -227,7 +227,7 @@ class CfRls:
     """Python port of BaroThrustCfRls.  Constants match baro_thrust_cf_rls.hpp."""
 
     # Defaults (matching baro_thrust_cf_rls.hpp)
-    DEFAULT_CF_BANDWIDTH = 0.1
+    DEFAULT_CF_BANDWIDTH = 0.05
     DEFAULT_RLS_LAMBDA = 0.998
     RLS_P_INIT = 100.0
     ERROR_VAR_INIT = 10.0

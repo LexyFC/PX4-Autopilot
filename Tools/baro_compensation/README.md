@@ -152,7 +152,7 @@ If not using the online estimator, you can calibrate manually:
 
 ## CF Bandwidth Tuning
 
-The default `SENS_BAR_CF_BW` (0.1 Hz) works well for most vehicles. Only
+The default `SENS_BAR_CF_BW` (0.05 Hz) works well for most vehicles. Only
 adjust it if the online estimator consistently fails to converge or produces
 a K that disagrees with range-sensor ground truth.
 
@@ -189,4 +189,4 @@ to IMU vibration but slower to converge.
 |-----------|-------------|-------|---------|
 | `SENS_BARO_PCOEF` | Baro altitude correction per unit vertical thrust [m] | -30 to 30 | 0.0 |
 | `SENS_BAR_AUTOCAL` | Bitmask: bit 0 = GNSS offset, bit 1 = online thrust cal | 0 to 3 | 1 |
-| `SENS_BAR_CF_BW` | CF crossover frequency for the online estimator [Hz] | 0.01 to 1.0 | 0.1 |
+| `SENS_BAR_CF_BW` | CF crossover frequency for the online estimator [Hz] | 0.01 to 1.0 | 0.05 |

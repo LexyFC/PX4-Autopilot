@@ -101,7 +101,7 @@ public:
 	static constexpr float K_STABILITY_DIFF_THR = 0.5f;      ///< max |K_smoothed - K_raw| for stability [m]
 
 	// --- Complementary filter ---
-	static constexpr float CF_BANDWIDTH_HZ_DEFAULT = 0.1f; ///< default crossover frequency [Hz]
+	static constexpr float CF_BANDWIDTH_HZ_DEFAULT = 0.05f; ///< default crossover frequency [Hz]
 	static constexpr float ERROR_VAR_INIT = 10.f;   ///< initial prediction error variance
 
 	/**
