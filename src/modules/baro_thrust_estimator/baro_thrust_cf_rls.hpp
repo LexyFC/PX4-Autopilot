@@ -95,6 +95,7 @@ public:
 	static constexpr float CONVERGENCE_ERR_REL_THR = 0.4f;  ///< max error/total variance ratio (model explains >60%)
 	static constexpr float CONVERGENCE_ERR_MAX_THR = 4.0f;   ///< absolute error cap for relative path [m^2]
 	static constexpr float MIN_THRUST_EXCITATION = 0.05f;    ///< min thrust std dev to trust the estimate
+	static constexpr float MIN_EXCITATION_TIME_S = 5.f;      ///< cumulative seconds above excitation threshold
 	static constexpr float MIN_ESTIMATION_TIME_S = 30.f;     ///< min flight time before convergence allowed
 	static constexpr float K_STABILITY_TIME_S = 10.f;        ///< K must be stable within threshold for this long
 	static constexpr float CONVERGENCE_HOLD_TIME_S = 10.f;   ///< must stay converged this long before locking
@@ -165,6 +166,8 @@ private:
 	bool _converged{false};                ///< all convergence criteria currently met
 	bool _converged_locked{false};         ///< converged and held long enough — ready to save
 	float _converged_elapsed_s{0.f};       ///< accumulated hold time while converged
+
+	float _excitation_elapsed_s{0.f};      ///< cumulative time with sufficient thrust excitation
 
 	// Thrust excitation tracking (need variation in thrust to observe K)
 	AlphaFilter<float> _thrust_mean{};     ///< low-pass mean thrust

@@ -45,6 +45,7 @@ void BaroThrustCfRls::reset()
 	_converged_locked = false;
 	_converged_elapsed_s = 0.f;
 	_k_stable_elapsed_s = 0.f;
+	_excitation_elapsed_s = 0.f;
 	_k_est_smoothed.reset(0.f);
 	_thrust_mean.reset(0.f);
 	_thrust_var.reset(0.f);
@@ -120,7 +121,14 @@ void BaroThrustCfRls::checkConvergence(float elapsed_since_start_s, float dt)
 	}
 
 	const bool variance_ok = _rls.P[0][0] < CONVERGENCE_VAR_THR;
-	const bool excitation_ok = fmaxf(_thrust_var.getState(), 0.f) > (MIN_THRUST_EXCITATION * MIN_THRUST_EXCITATION);
+
+	// Accumulate time with sufficient thrust excitation. RLS doesn't need
+	// continuous excitation — intermittent bursts are enough to identify K.
+	if (fmaxf(_thrust_var.getState(), 0.f) > (MIN_THRUST_EXCITATION * MIN_THRUST_EXCITATION)) {
+		_excitation_elapsed_s += dt;
+	}
+
+	const bool excitation_ok = _excitation_elapsed_s > MIN_EXCITATION_TIME_S;
 
 	// Dual-path error check: absolute threshold works for refinement flights
 	// (PCOEF already set), relative threshold allows first calibration where
