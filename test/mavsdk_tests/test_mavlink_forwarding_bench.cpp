@@ -52,6 +52,7 @@
 
 #include <mavsdk/mavsdk.h>
 #include <mavsdk/plugins/mavlink_passthrough/mavlink_passthrough.h>
+#include <mavsdk/plugins/shell/shell.h>
 #include <mavsdk/plugins/telemetry/telemetry.h>
 
 #include <atomic>
@@ -127,6 +128,8 @@ static void print_usage(const char *bin)
 		  << "  --duration <sec>     Test duration in seconds (default: 60)\n"
 		  << "  --rate <hz>          Messages per second per connection (default: 200)\n"
 		  << "  --connections <n>    Number of UDP connections (default: 2)\n"
+		  << "  --url <url>          MAVSDK connection URL (e.g. serial:///dev/ttyACM0:57600)\n"
+		  << "                       When set, uses a single connection (ignores --connections)\n"
 		  << "  --gcs-port <port>    GCS UDP port (default: 14550)\n"
 		  << "  --api-port <port>    Offboard/API UDP port (default: 14540)\n"
 		  << "  --report <file>      Write CSV report to file (default: stdout)\n"
@@ -141,6 +144,7 @@ int main(int argc, char *argv[])
 	int gcs_port = 14550;
 	int api_port = 14540;
 	std::string report_file;
+	std::string connection_url;
 
 	for (int i = 1; i < argc; ++i) {
 		std::string arg(argv[i]);
@@ -153,6 +157,10 @@ int main(int argc, char *argv[])
 
 		} else if (arg == "--connections" && i + 1 < argc) {
 			num_connections = std::atoi(argv[++i]);
+
+		} else if (arg == "--url" && i + 1 < argc) {
+			connection_url = argv[++i];
+			num_connections = 1;
 
 		} else if (arg == "--gcs-port" && i + 1 < argc) {
 			gcs_port = std::atoi(argv[++i]);
@@ -174,6 +182,16 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (duration_sec <= 0 || rate_hz <= 0 || num_connections <= 0) {
+		std::cerr << "Error: --duration, --rate, and --connections must be positive" << std::endl;
+		return 1;
+	}
+
+	if (num_connections > 10) {
+		std::cerr << "Error: max 10 connections (sysid 245-254)" << std::endl;
+		return 1;
+	}
+
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 
@@ -183,27 +201,37 @@ int main(int argc, char *argv[])
 	std::cout << "Connections: " << num_connections << std::endl;
 	std::cout << std::endl;
 
-	// Build list of UDP ports to connect to
-	std::vector<int> ports;
+	// Build list of connection URLs
+	std::vector<std::string> urls;
 
-	if (num_connections >= 1) {
-		ports.push_back(api_port);  // Offboard/API link
-	}
+	if (!connection_url.empty()) {
+		urls.push_back(connection_url);
 
-	if (num_connections >= 2) {
-		ports.push_back(gcs_port);  // GCS link
-	}
+	} else {
+		std::vector<int> ports;
 
-	// Additional connections use sequential ports after api_port
-	for (int i = 2; i < num_connections; ++i) {
-		ports.push_back(api_port + i);
+		if (num_connections >= 1) {
+			ports.push_back(api_port);
+		}
+
+		if (num_connections >= 2) {
+			ports.push_back(gcs_port);
+		}
+
+		for (int i = 2; i < num_connections; ++i) {
+			ports.push_back(api_port + i);
+		}
+
+		for (int p : ports) {
+			urls.push_back("udp://:" + std::to_string(p));
+		}
 	}
 
 	// Create MAVSDK instances and connect
 	std::vector<std::unique_ptr<Mavsdk>> mavsdks;
-	std::vector<MavlinkPassthrough *> passthroughs;
+	std::vector<std::unique_ptr<MavlinkPassthrough>> passthroughs;
 
-	for (size_t i = 0; i < ports.size(); ++i) {
+	for (size_t i = 0; i < urls.size(); ++i) {
 		auto config = Mavsdk::Configuration(
 				      static_cast<uint8_t>(245 + i),  // unique sysid per connection
 				      MAV_COMP_ID_MISSIONPLANNER,
@@ -211,13 +239,12 @@ int main(int argc, char *argv[])
 			      );
 		auto mavsdk = std::make_unique<Mavsdk>(config);
 
-		std::string url = "udp://:" + std::to_string(ports[i]);
-		std::cout << "Connecting to " << url << " (sysid=" << (245 + i) << ")..." << std::endl;
+		std::cout << "Connecting to " << urls[i] << " (sysid=" << (245 + i) << ")..." << std::endl;
 
-		auto result = mavsdk->add_any_connection(url);
+		auto result = mavsdk->add_any_connection(urls[i]);
 
 		if (result != ConnectionResult::Success) {
-			std::cerr << "Connection failed: " << url << std::endl;
+			std::cerr << "Connection failed: " << urls[i] << std::endl;
 			return 1;
 		}
 
@@ -225,7 +252,7 @@ int main(int argc, char *argv[])
 		std::cout << "  Waiting for system..." << std::flush;
 		bool found = false;
 
-		for (int t = 0; t < 50; ++t) {  // 5 second timeout
+		for (int t = 0; t < 100; ++t) {  // 10 second timeout for serial
 			if (!mavsdk->systems().empty()) {
 				found = true;
 				break;
@@ -235,15 +262,14 @@ int main(int argc, char *argv[])
 		}
 
 		if (!found) {
-			std::cerr << "\n  Timeout waiting for system on port " << ports[i] << std::endl;
+			std::cerr << "\n  Timeout waiting for system on " << urls[i] << std::endl;
 			return 1;
 		}
 
 		std::cout << " OK" << std::endl;
 
 		auto system = mavsdk->systems().front();
-		auto *passthrough = new MavlinkPassthrough(system);
-		passthroughs.push_back(passthrough);
+		passthroughs.push_back(std::make_unique<MavlinkPassthrough>(system));
 		mavsdks.push_back(std::move(mavsdk));
 	}
 
@@ -318,7 +344,7 @@ int main(int argc, char *argv[])
 		uint64_t errors = stats[i].send_errors.load();
 		double rate = static_cast<double>(sent) / total_elapsed;
 
-		std::cout << "  Connection " << i << " (port " << ports[i] << "): "
+		std::cout << "  Connection " << i << " (" << urls[i] << "): "
 			  << "sent=" << sent
 			  << " errors=" << errors
 			  << " rate=" << static_cast<int>(rate) << " msg/s"
@@ -354,15 +380,15 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	fprintf(out, "connection,port,sysid,messages_sent,send_errors,duration_s,rate_hz_requested,rate_hz_actual\n");
+	fprintf(out, "connection,url,sysid,messages_sent,send_errors,duration_s,rate_hz_requested,rate_hz_actual\n");
 
 	for (size_t i = 0; i < stats.size(); ++i) {
 		uint64_t sent = stats[i].messages_sent.load();
 		uint64_t errors = stats[i].send_errors.load();
 		double rate = static_cast<double>(sent) / total_elapsed;
 
-		fprintf(out, "%zu,%d,%d,%" PRIu64 ",%" PRIu64 ",%.1f,%d,%.1f\n",
-			i, ports[i], static_cast<int>(245 + i),
+		fprintf(out, "%zu,%s,%d,%" PRIu64 ",%" PRIu64 ",%.1f,%d,%.1f\n",
+			i, urls[i].c_str(), static_cast<int>(245 + i),
 			sent, errors, total_elapsed, rate_hz, rate);
 	}
 
@@ -371,10 +397,32 @@ int main(int argc, char *argv[])
 		std::cout << "CSV report written to: " << report_file << std::endl;
 	}
 
-	// Cleanup
-	for (auto *p : passthroughs) {
-		delete p;
+	// Read bench counters from the board via MAVLink shell
+	std::cout << std::endl;
+	std::cout << "=== Reading board perf counters ===" << std::endl;
+
+	auto system = mavsdks.front()->systems().front();
+	Shell shell(system);
+
+	std::string shell_output;
+	std::atomic<bool> got_bench{false};
+
+	shell.subscribe_receive([&](std::string output) {
+		shell_output += output;
+		std::cout << output;
+
+		if (output.find("fwd_msg lock") != std::string::npos) {
+			got_bench.store(true);
+		}
+	});
+
+	shell.send("mavlink status");
+
+	for (int i = 0; i < 100 && !got_bench.load(); ++i) {
+		std::this_thread::sleep_for(100ms);
 	}
+
+	std::this_thread::sleep_for(500ms);
 
 	return 0;
 }

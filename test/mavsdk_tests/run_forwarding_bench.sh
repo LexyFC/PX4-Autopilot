@@ -91,30 +91,19 @@ echo ""
     2>&1 | tee "${RESULT_PREFIX}_bench.log"
 
 echo ""
-echo "=== Step 5: Collect perf counters ==="
-
-# Send 'perf' command to PX4 via mavlink shell (or direct if available)
-sleep 2
+echo "=== Step 5: Perf counters ==="
+echo "The benchmark tool reads perf counters from the board automatically"
+echo "via the MAVLink shell protocol. Check the bench log above for BENCH lines."
 
 echo ""
-echo "=== Step 6: Stop PX4 and extract perf data ==="
+echo "=== Step 6: Stop PX4 ==="
 kill -INT "$PX4_PID" 2>/dev/null || true
-sleep 3
+wait "$PX4_PID" 2>/dev/null || true
 
-# PX4 dumps perf counters on exit in some configurations.
-# Extract perf lines from the log.
-if grep -q "mavlink: fwd_msg" "${RESULT_PREFIX}_px4.log"; then
-    echo "Perf counters from PX4 log:"
-    grep -E "mavlink: (fwd_|comp_seen|unsigned_cb)" "${RESULT_PREFIX}_px4.log" | tee "${RESULT_PREFIX}_perf.txt"
-else
-    echo "NOTE: Perf counters not found in PX4 log."
-    echo "Run 'perf' in the PX4 console before stopping to capture data."
-    echo ""
-    echo "Manual workflow:"
-    echo "  1. Terminal 1: PX4_SIM_MODEL=sihsim_quadx make px4_sitl_sih"
-    echo "  2. Terminal 2: $BUILD_DIR/mavlink_forwarding_bench --duration $DURATION --rate $RATE --connections $CONNECTIONS"
-    echo "  3. Terminal 1 (PX4 console): perf"
-    echo "  4. Copy the perf output to ${RESULT_PREFIX}_perf.txt"
+# Extract bench lines from the benchmark log if available
+if grep -q "BENCH" "${RESULT_PREFIX}_bench.log" 2>/dev/null; then
+    echo "Perf counters:"
+    grep "BENCH" "${RESULT_PREFIX}_bench.log" | tee "${RESULT_PREFIX}_perf.txt"
 fi
 
 echo ""
