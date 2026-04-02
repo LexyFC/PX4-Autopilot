@@ -6,7 +6,7 @@ The direction and magnitude depend on sensor placement relative to the propeller
 
 PX4 can compensate for this error by applying a correction proportional to the vertical thrust setpoint:
 
-```
+```txt
 corrected_baro_alt = raw_baro_alt + SENS_BARO_PCOEF * |thrust_z|
 ```
 
@@ -39,19 +39,19 @@ The estimator refines the parameter over subsequent flights — each flight corr
 2. Fly normally for at least 60 seconds with some altitude variation.
 3. On disarm, the estimated `SENS_BARO_PCOEF` is saved automatically if the estimator converged.
 4. Check convergence after flight:
-   - In the console: `baro_thrust_estimator status`
+   - In the console: `baro_thrust_estimator status`.
    - In a log: look at the `baro_thrust_estimate` topic — `converged` should be true.
 
 The estimator uses several convergence gates before saving:
 
-| Gate | Threshold | Purpose |
-|------|-----------|---------|
-| Minimum flight time | 30 s | Allow RLS to settle |
-| K variance (P[0][0]) | < 3.0 | Parameter estimate is precise |
-| Prediction error | Low absolute or relative | Model fits the data |
-| Thrust excitation | std > 0.05 | Enough signal to identify K |
-| K stability | Stable for 10 s | Estimate is not drifting |
-| Hold time | 10 s | Convergence is sustained |
+| Gate                 | Threshold                | Purpose                       |
+| -------------------- | ------------------------ | ----------------------------- |
+| Minimum flight time  | 30 s                     | Allow RLS to settle           |
+| K variance (P[0][0]) | < 3.0                    | Parameter estimate is precise |
+| Prediction error     | Low absolute or relative | Model fits the data           |
+| Thrust excitation    | std > 0.05               | Enough signal to identify K   |
+| K stability          | Stable for 10 s          | Estimate is not drifting      |
+| Hold time            | 10 s                     | Convergence is sustained      |
 
 ::: tip
 Altitude changes during hover provide the thrust excitation the estimator needs.
@@ -60,11 +60,11 @@ Constant-thrust hover with no altitude variation will not converge.
 
 ### Parameters
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| [SENS_BARO_PCOEF](../advanced_config/parameter_reference.md#SENS_BARO_PCOEF) | 0.0 | Baro altitude correction per unit vertical thrust \[m\]. Identified by the estimator or set manually. |
-| [SENS_BAR_AUTOCAL](../advanced_config/parameter_reference.md#SENS_BAR_AUTOCAL) | 1 | Bitmask: bit 0 = GNSS altitude offset, bit 1 = online thrust compensation. Set to 3 for both. |
-| [SENS_BAR_CF_BW](../advanced_config/parameter_reference.md#SENS_BAR_CF_BW) | 0.1 | CF crossover frequency \[Hz\]. Lower = more conservative, higher = faster identification but noisier. |
+| Parameter                                                                      | Default | Description                                                                                           |
+| ------------------------------------------------------------------------------ | ------- | ----------------------------------------------------------------------------------------------------- |
+| [SENS_BARO_PCOEF](../advanced_config/parameter_reference.md#SENS_BARO_PCOEF)   | 0.0     | Baro altitude correction per unit vertical thrust \[m\]. Identified by the estimator or set manually. |
+| [SENS_BAR_AUTOCAL](../advanced_config/parameter_reference.md#SENS_BAR_AUTOCAL) | 1       | Bitmask: bit 0 = GNSS altitude offset, bit 1 = online thrust compensation. Set to 3 for both.         |
+| [SENS_BAR_CF_BW](../advanced_config/parameter_reference.md#SENS_BAR_CF_BW)     | 0.1     | CF crossover frequency \[Hz\]. Lower = more conservative, higher = faster identification but noisier. |
 
 ### Soft Guards
 
@@ -91,19 +91,19 @@ If you prefer not to use the online estimator, you can identify `SENS_BARO_PCOEF
 
 The script automatically selects an analysis mode based on available data:
 
-| Mode | Data Required | Output |
-|------|--------------|--------|
-| Estimator review | Online estimator logged | K convergence, residual analysis |
-| Full validation | Estimator + range sensor | Cross-validation of online vs offline K |
-| Standalone calibration | Range sensor only | Recommended PCOEF from least-squares fit |
+| Mode                   | Data Required            | Output                                   |
+| ---------------------- | ------------------------ | ---------------------------------------- |
+| Estimator review       | Online estimator logged  | K convergence, residual analysis         |
+| Full validation        | Estimator + range sensor | Cross-validation of online vs offline K  |
+| Standalone calibration | Range sensor only        | Recommended PCOEF from least-squares fit |
 
 ## Interpreting Results
 
-| Metric | Good | Marginal | Poor |
-|--------|------|----------|------|
+| Metric                   | Good  | Marginal  | Poor  |
+| ------------------------ | ----- | --------- | ----- |
 | Thrust correlation \|r\| | > 0.6 | 0.3 - 0.6 | < 0.3 |
-| Model R^2 | > 0.3 | 0.1 - 0.3 | < 0.1 |
-| Compensated \|r\| | < 0.2 | 0.2 - 0.4 | > 0.4 |
+| Model R^2                | > 0.3 | 0.1 - 0.3 | < 0.1 |
+| Compensated \|r\|        | < 0.2 | 0.2 - 0.4 | > 0.4 |
 
 - **Low R^2**: Thrust is not the dominant baro error source. Check for thermal drift, ground effect, or sensor placement issues.
 - **Online/offline K disagreement > 2 m**: The estimator may need more excitation. Fly longer or with more altitude variation.
