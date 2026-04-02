@@ -69,39 +69,19 @@ CRSF receiver must be wired to a spare port (UART) on the Flight Controller. The
 | UART7  | /dev/ttyS4 | TELEM3  |
 | UART8  | /dev/ttyS5 | SERIAL4 |
 
-## PWM Output
+## PWM Outputs {#pwm_outputs}
 
-The AP-H743-R1 flight controller supports up to 15 PWM outputs.
-The first 8 outputs (labelled M1 to M8) are controlled by a dedicated STM32F103 IOMCU controller.
-The remaining 7 outputs (labelled A1 to A7) are the "auxiliary" outputs.
-These are directly attached to the STM32H743 FMU controller .
+This flight controller supports up to 7 FMU PWM outputs (AUX) and 8 IO PWM outputs (MAIN).
 
-The 15 PWM outputs are:
+All FMU outputs support [DShot](../peripherals/dshot.md) and [Bidirectional DShot](../peripherals/dshot.md#bidirectional-dshot-telemetry).
 
-M1 - M8 are connected to the IOMCU.
-A1 - A7 are connected to the FMU.
+The 7 outputs are in 3 groups:
 
-M1 - M8 support DShot and are in 3 groups:
+- Outputs 1-4 in group1 (Timer1)
+- Output 7 in group2 (Timer2)
+- Outputs 5-6 in group3 (Timer3)
 
-- M1, M2 in group 1
-- M3, M4 in group 2
-- M5, M6, M7, M8 in group 3
-
-The 7 FMU PWM outputs are in 3 groups:
-
-- A1 - A4 are in one group.
-- A5, A6 are in a 2nd group.
-- A7 is in a 3rd group.
-
-Channels within the same group need to use the same output rate.
-If any channel in a group uses DShot then all channels in the group need to use DShot.
-
-### Electrical data
-
-- Voltage Ratings:
-  - Max input voltage: 5.4V
-  - USB Power Input: 4.75\~5.25V
-  - Servo Rail Input: 0\~9.9V
+All outputs within the same group must use the same output protocol and rate.
 
 ## Battery Monitoring
 

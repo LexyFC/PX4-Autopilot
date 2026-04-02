@@ -86,6 +86,25 @@ This flight controller is [manufacturer supported](../flight_controller/autopilo
 
 For more information see: [Durandal Technical Data Sheet](https://cdn.shopify.com/s/files/1/0604/5905/7341/files/Durandal_technical_data_sheet_90f8875d-8035-4632-a936-a0d178062077.pdf).
 
+## PWM Outputs {#pwm_outputs}
+
+This flight controller supports up to 10 FMU PWM outputs (AUX) and 8 IO PWM outputs (MAIN).
+
+FMU Outputs:
+
+- Outputs 1-5 support [DShot](../peripherals/dshot.md).
+- Outputs 6-10 do not support DShot.
+- Outputs 1-5 support [Bidirectional DShot](../peripherals/dshot.md#bidirectional-dshot-telemetry).
+
+The 10 outputs are in 4 groups:
+
+- Outputs 1-4 in group1 (Timer1)
+- Output 5 in group2 (Timer4)
+- Outputs 6-8 in group3 (Timer2)
+- Outputs 9-10 in group4 (Timer12)
+
+All outputs within the same group must use the same output protocol and rate.
+
 ## Where to Buy {#store}
 
 Order from [Holybro](https://holybro.com/products/durandal).

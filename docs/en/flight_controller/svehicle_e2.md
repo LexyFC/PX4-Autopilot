@@ -85,41 +85,24 @@ CRSF receiver must be wired to a spare port (UART) on the Flight Controller. The
 | UART7  | /dev/ttyS6 | TELEM1        |
 | UART8  | /dev/ttyS7 | GPS2          |
 
-## PWM Output
+## PWM Outputs {#pwm_outputs}
 
-The E2-Plus flight controller supports up to 14 PWM outputs.
-The first 8 outputs (labelled M1 to M8) are controlled by a dedicated STM32F103 IOMCU controller.
-The remaining 6 outputs (labelled 9 to 14) are the "auxiliary" outputs.
-These are directly attached to the STM32H753 FMU controller .
+This flight controller supports up to 9 FMU PWM outputs (AUX) and 8 IO PWM outputs (MAIN).
 
-The 14 PWM outputs are:
+FMU Outputs:
 
-M1 - M8 are connected to the IOMCU
-A1 - A6 are connected to the FMU
+- Outputs 1-6 support [DShot](../peripherals/dshot.md).
+- Outputs 7-9 do not support DShot.
+- Outputs 1-6 support [Bidirectional DShot](../peripherals/dshot.md#bidirectional-dshot-telemetry).
 
-M1 - M8 support DShot and are in 3 groups:
+The 9 outputs are in 4 groups:
 
-- M1, M2 in group 1
-- M3, M4 in group 2
-- M5, M6, M7, M8 in group 3
+- Outputs 1-4 in group1 (Timer5)
+- Outputs 5-6 in group2 (Timer4)
+- Outputs 7-8 in group3 (Timer12)
+- Output 9 in group4 (Timer1)
 
-The 6 FMU PWM outputs are in 2 groups:
-
-A1 - A4 are in one group.
-A5, A6 are in a 2nd group.
-
-Channels within the same group need to use the same output rate.
-If any channel in a group uses DShot then all channels in the group need to use DShot.
-
-### Electrical data
-
-- Voltage Ratings:
-  - Max input voltage: 5.7V
-  - USB Power Input: 4.75\~5.25V
-  - Servo Rail Input: 0\~9.9V
-- Current Ratings:
-  - TELEM1 and GPS2 combined output current limiter: 1.5A
-  - All other port combined output current limiter: 1.5A
+All outputs within the same group must use the same output protocol and rate.
 
 ## Battery Monitoring
 

@@ -325,22 +325,23 @@ For PPM receivers please use RC Connector PPM pin located on the left side of th
 
 ![RC Input](../../assets/flight_controller/airlink/airlink-rc-input.jpg)
 
-## Outputs
+## PWM Outputs {#pwm_outputs}
 
-AIRLink has 16 PWM outputs. Main outputs 1-8 and connected to IO MCU. AUX outputs 1-8 are connected to FMU.
+This flight controller supports up to 8 FMU PWM outputs (AUX) and 8 IO PWM outputs (MAIN).
 
-| Output | Timer    | Channel   |
-| ------ | -------- | --------- |
-| AUX 1  | Timer 1  | Channel 4 |
-| AUX 2  | Timer 1  | Channel 3 |
-| AUX 3  | Timer 1  | Channel 2 |
-| AUX 4  | Timer 1  | Channel 1 |
-| AUX 5  | Timer 4  | Channel 2 |
-| AUX 6  | Timer 4  | Channel 3 |
-| AUX 7  | Timer 12 | Channel 1 |
-| AUX 8  | Timer 12 | Channel 2 |
+FMU Outputs:
 
-[DShot](../peripherals/dshot.md) can be used on the first four AUX pins.
+- Outputs 1-6 support [DShot](../peripherals/dshot.md).
+- Outputs 7-8 do not support DShot.
+- Outputs 1-6 support [Bidirectional DShot](../peripherals/dshot.md#bidirectional-dshot-telemetry).
+
+The 8 outputs are in 3 groups:
+
+- Outputs 1-4 in group1 (Timer1)
+- Outputs 5-6 in group2 (Timer4)
+- Outputs 7-8 in group3 (Timer12)
+
+All outputs within the same group must use the same output protocol and rate.
 
 ## Building Firmware
 

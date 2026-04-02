@@ -104,6 +104,27 @@ Order from [CUAV](https://store.cuav.net/).
 ![CUAV X25-SUPER Pinout_01](../../assets/flight_controller/cuav_x25-super/x25-super_pinouts_01.png)
 ![CUAV X25-SUPER Pinout_02](../../assets/flight_controller/cuav_x25-super/x25-super_pinouts_02.png)
 
+## PWM Outputs {#pwm_outputs}
+
+This flight controller supports up to 16 FMU PWM outputs (MAIN).
+
+Outputs:
+
+- Outputs 1-8 support [DShot](../peripherals/dshot.md).
+- Outputs 9-16 do not support DShot.
+- Outputs 1-7 support [Bidirectional DShot](../peripherals/dshot.md#bidirectional-dshot-telemetry).
+- Output 8 supports Bidirectional DShot output only (no eRPM capture).
+
+The 16 outputs are in 5 groups:
+
+- Outputs 1-4 in group1 (Timer5)
+- Outputs 5-8 in group2 (Timer4)
+- Outputs 9-11 in group3 (Timer1)
+- Outputs 12-14 in group4 (Timer8)
+- Outputs 15-16 in group5 (Timer12)
+
+All outputs within the same group must use the same output protocol and rate.
+
 ## Serial Port Mapping
 
 | UART   | Device     | Port          |
