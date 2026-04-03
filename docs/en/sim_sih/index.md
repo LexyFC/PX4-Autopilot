@@ -74,27 +74,25 @@ The `px4_sitl` target will work, but will also build Gazebo libraries.
 ### Visualization (Optional) {#sitl-visualization}
 
 SIH is intentionally headless by default.
-If you need a visual aid to see what the vehicle is doing you can use QGroundControl to track path over ground, and/or jMAVSim as a 3D viewer.
+If you need a visual aid to see what the vehicle is doing you can use QGroundControl to track path over ground, and/or [Hawkeye](../sim_hawkeye/index.md) as a 3D viewer.
 
 #### QGroundControl
 
 QGC auto-connects on UDP port 14550. Open QGC while SIH is running and the vehicle appears on the map view with attitude, position, and telemetry.
 
-#### jMAVSim (3D Display-Only)
+#### Hawkeye (3D Visualizer)
 
-jMAVSim can render a 3D view of the vehicle using MAVLink position data. No physics are simulated in jMAVSim — it is display-only.
+[Hawkeye](../sim_hawkeye/index.md) renders a real-time 3D view of the vehicle using MAVLink position data. No physics are simulated in Hawkeye — it is a visualizer only.
+
+In a separate terminal, run:
 
 ```sh
-./Tools/simulation/jmavsim/jmavsim_run.sh -p 19410 -u -q -o
+hawkeye
 ```
 
-Flags:
+Hawkeye connects on UDP port 19410 by default (the same port SIH sends `HIL_STATE_QUATERNION` on).
 
-- `-a` for airplane model
-- `-t` for tailsitter model
-- `-o` enable display-only mode.
-
-See [jMAVSim Display-Only Mode](../sim_jmavsim/index.md#display-only-mode) for details.
+Use `-fw` for fixed-wing or `-ts` for tailsitter models. See the [Hawkeye docs](../sim_hawkeye/index.md) for multi-vehicle visualization and ULog replay.
 
 ### Environment Configuration
 
@@ -154,7 +152,7 @@ PX4 SITL opens the following UDP ports (all instance-aware, offset by instance n
 | **14540** (+N)        | 14580 (+N)             | MAVSDK, MAVROS, offboard APIs   | Yes (capped at 14549 for 10+ instances)   |
 | **14030** (+N)        | 14280 (+N)             | Onboard camera/payload          | Yes                                       |
 | **13280** (+N)        | 13030 (+N)             | Gimbal control                  | Yes                                       |
-| **19410** (+N)        | 19450 (+N)             | jMAVSim display-only (SIH only) | Yes                                       |
+| **19410** (+N)        | 19450 (+N)             | Hawkeye visualizer (SIH only)   | Yes                                       |
 | **8888**              | -                      | uXRCE-DDS / ROS 2               | No (use DDS namespace for multi-instance) |
 
 QGC auto-connects on port **14550** by default. MAVSDK connects on **14540**. No manual port configuration needed for single-instance use.
