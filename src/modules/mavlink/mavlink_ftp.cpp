@@ -37,9 +37,11 @@
 #include <crc32.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <limits.h>
 #include <cstring>
 
 #include "mavlink_ftp.h"
@@ -482,6 +484,12 @@ MavlinkFTP::_workOpen(PayloadHeader *payload, int oflag)
 		return kErrFailFileProtected;
 	}
 
+	const bool is_write_open = (oflag & (O_WRONLY | O_RDWR)) != 0;
+
+	if (is_write_open && !_validatePathIsWritable(_work_buffer1)) {
+		return kErrFailFileProtected;
+	}
+
 	PX4_DEBUG("FTP: open '%s'", _work_buffer1);
 
 	uint32_t fileSize = 0;
@@ -504,8 +512,14 @@ MavlinkFTP::_workOpen(PayloadHeader *payload, int oflag)
 	fileSize = st.st_size;
 
 	PX4_DEBUG("open: %s", _work_buffer1);
-	// Set mode to 666 incase oflag has O_CREAT
-	int fd = ::open(_work_buffer1, oflag, PX4_O_MODE_666);
+	// Set mode to 666 incase oflag has O_CREAT. Use O_NOFOLLOW where available
+	// so a TOCTOU race cannot redirect the leaf through a symlink between
+	// validation and open(2).
+	int leaf_oflag = oflag;
+#ifdef O_NOFOLLOW
+	leaf_oflag |= O_NOFOLLOW;
+#endif
+	int fd = ::open(_work_buffer1, leaf_oflag, PX4_O_MODE_666);
 
 	if (fd < 0) {
 		_our_errno = errno;
@@ -592,7 +606,7 @@ MavlinkFTP::_workWrite(PayloadHeader *payload)
 		return kErrInvalidSession;
 	}
 
-	if (!_validatePathIsWritable(_work_buffer1)) {
+	if (!_validatePath(_work_buffer1) || !_validatePathIsWritable(_work_buffer1)) {
 		return kErrFailFileProtected;
 	}
 
@@ -1144,16 +1158,133 @@ bool MavlinkFTP::_validatePath(const char *path)
 	return true;
 }
 
+/**
+ * Resolve symlinks and verify the path is contained in PX4_STORAGEDIR.
+ *
+ * Used as a defence against symlink-resolution bypasses where _validatePath()
+ * accepts a string that does not contain ".." but the underlying open()/mkdir()
+ * follows a symlink to a target outside the intended FTP root.
+ *
+ * For files that do not yet exist (CreateFile, CreateDirectory) realpath() on
+ * the full path would fail, so we resolve the parent directory and reattach
+ * the leaf name. The result is a canonical absolute path (or a relative path
+ * starting with the canonicalized PX4_STORAGEDIR) that is then prefix-matched
+ * against the canonicalized root.
+ *
+ * On NuttX realpath() is not available; the simpler string-based check from
+ * the previous implementation is used in that case.
+ */
+bool MavlinkFTP::_validatePathIsInRoot(const char *path)
+{
+#ifndef __PX4_NUTTX
+	char canonical_root[PATH_MAX];
+
+	if (realpath(PX4_STORAGEDIR, canonical_root) == nullptr) {
+		PX4_ERR("FTP: realpath(root) failed: %s", strerror(errno));
+		return false;
+	}
+
+	const size_t canonical_root_len = strlen(canonical_root);
+
+	// Try to canonicalize the full path. If the leaf does not yet exist,
+	// fall back to resolving the parent directory and reattaching the leaf.
+	char canonical[PATH_MAX];
+
+	if (realpath(path, canonical) == nullptr) {
+		// Split into parent and leaf, resolve the parent, reattach the leaf.
+		char parent_buf[PATH_MAX];
+		strncpy(parent_buf, path, sizeof(parent_buf) - 1);
+		parent_buf[sizeof(parent_buf) - 1] = '\0';
+
+		char *slash = strrchr(parent_buf, '/');
+		const char *leaf = nullptr;
+
+		if (slash != nullptr) {
+			*slash = '\0';
+			leaf = slash + 1;
+
+		} else {
+			// No slash: parent is current directory, leaf is the whole path
+			parent_buf[0] = '.';
+			parent_buf[1] = '\0';
+			leaf = path;
+		}
+
+		char canonical_parent[PATH_MAX];
+
+		if (realpath(parent_buf, canonical_parent) == nullptr) {
+			PX4_ERR("FTP: realpath(parent of %s) failed: %s", path, strerror(errno));
+			return false;
+		}
+
+		const int n = snprintf(canonical, sizeof(canonical), "%s/%s", canonical_parent, leaf);
+
+		if (n < 0 || (size_t)n >= sizeof(canonical)) {
+			PX4_ERR("FTP: canonical path too long for %s", path);
+			return false;
+		}
+	}
+
+	// The canonical path must start with the canonical root and either
+	// equal it or be followed by a path separator.
+	if (strncmp(canonical, canonical_root, canonical_root_len) != 0
+	    || (canonical[canonical_root_len] != '\0' && canonical[canonical_root_len] != '/')) {
+		PX4_ERR("FTP: rejecting path outside FTP root: %s -> %s", path, canonical);
+		return false;
+	}
+
+	return true;
+#else
+	// NuttX: realpath() is not available. Fall back to a string-based prefix
+	// and traversal check; symlinks are not commonly used on NuttX targets.
+	if (strncmp(path, CONFIG_BOARD_ROOT_PATH "/", strlen(CONFIG_BOARD_ROOT_PATH "/")) != 0
+	    || strstr(path, "/../") != nullptr) {
+		PX4_ERR("FTP: rejecting path outside FTP root: %s", path);
+		return false;
+	}
+
+	return true;
+#endif
+}
+
 bool MavlinkFTP::_validatePathIsWritable(const char *path)
 {
-#ifdef __PX4_NUTTX
-
-	// Don't allow writes to system paths as they are in RAM
-	// Ideally we'd canonicalize the path (with 'realpath'), but it might not exist, so realpath() would fail.
-	// The next simpler thing is to check there's no reference to a parent dir.
-	if (strncmp(path, CONFIG_BOARD_ROOT_PATH "/", 12) != 0 || strstr(path, "/../") != nullptr) {
-		PX4_ERR("Disallowing write to %s", path);
+	if (!_validatePathIsInRoot(path)) {
 		return false;
+	}
+
+	// Reject writes to boot-executed startup hook files. The PX4 NuttX rcS
+	// sources $FRC, $FCONFIG, $FEXTRAS unconditionally during boot, so an
+	// attacker that can write to these paths gets persistent code execution
+	// at the next reboot. Reject the entire PX4_STORAGEDIR/etc/ subtree to
+	// keep future hooks safe by default.
+	static const char kBootHookPrefix[] = PX4_STORAGEDIR "/etc/";
+	const size_t kBootHookPrefixLen = sizeof(kBootHookPrefix) - 1;
+
+	if (strncmp(path, kBootHookPrefix, kBootHookPrefixLen) == 0) {
+		PX4_ERR("FTP: refusing to write protected path %s", path);
+		return false;
+	}
+
+#ifndef __PX4_NUTTX
+	// Also reject the canonical form, in case an in-root symlink redirects
+	// the leaf into the protected etc/ subtree.
+	char canonical[PATH_MAX];
+
+	if (realpath(path, canonical) != nullptr) {
+		char canonical_root[PATH_MAX];
+
+		if (realpath(PX4_STORAGEDIR, canonical_root) != nullptr) {
+			char canonical_boot_prefix[PATH_MAX];
+			const int n = snprintf(canonical_boot_prefix, sizeof(canonical_boot_prefix),
+					       "%s/etc/", canonical_root);
+
+			if (n > 0 && (size_t)n < sizeof(canonical_boot_prefix)
+			    && strncmp(canonical, canonical_boot_prefix, strlen(canonical_boot_prefix)) == 0) {
+				PX4_ERR("FTP: refusing to write protected path %s -> %s", path, canonical);
+				return false;
+			}
+		}
 	}
 
 #endif
