@@ -84,7 +84,8 @@ You can configure both the levels and the failsafe actions at each level in QGro
 
 The most common configuration is to set the values and action as above (with `Warn > Failsafe > Emergency`), and to set the [Failsafe Action](#COM_LOW_BAT_ACT) to warn at "warn level", trigger [Return mode](../flight_modes/return.md) at "Failsafe level", and land immediately at "Emergency level".
 
-The same parameter also controls the "Bingo fuel failsafe", which triggers [Return mode](../flight_modes/return.md) when the estimated remaining flight time drops below what is needed to return safely (requires [`BATn_CAPACITY`](#BAT1_CAPACITY) to be set).
+The failsafe action (`COM_LOW_BAT_ACT`) also allows you to enable the _Bingo fuel failsafe_"\_, which triggers [Return mode](../flight_modes/return.md) when the estimated remaining flight time drops below what is needed to return safely.
+Note that you must set the [`BATn_CAPACITY`](#BAT1_CAPACITY) parameters for your batteries for this failsafe to work properly.
 
 | Setting                                                     | Parameter                                                                    | Description                                                                                                                   |
 | ----------------------------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
