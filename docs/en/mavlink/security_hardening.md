@@ -43,19 +43,24 @@ Steps:
 4. Verify that unsigned messages from unknown sources are rejected.
 
 ::: info
-Once a key is provisioned, signing is enforced automatically on **all links including USB**.
-Changing or disabling the key requires a signed `SETUP_SIGNING` message. Signing changes are rejected while the vehicle is armed.
+Once a key is provisioned, signing is enforced automatically on **all links** (including USB).
+Changing or disabling the key requires a signed `SETUP_SIGNING` message.
+Signing changes are rejected while the vehicle is armed.
 Signing can also be disabled by physically removing the key file from the SD card.
 :::
 
 ### 2. Secure Physical Access
 
-- **SD card**: The signing key is stored at `/mavlink/mavlink-signing-key.bin`. Anyone with physical access to the SD card can read, modify, or remove the key file.
-- **USB ports**: USB follows the same signing rules as all other links. When signing is active, USB requires signed messages.
-- **Debug ports (SWD/JTAG)**: If exposed, these allow full firmware reflash and bypass all software security. Not all vehicles expose debug connectors.
+- **SD card**: The signing key is stored at `/mavlink/mavlink-signing-key.bin`.
+  Anyone with physical access to the SD card can read, modify, or remove the key file.
+- **USB ports**: USB follows the same signing rules as all other links.
+  When signing is active, USB requires signed messages.
+- **Debug ports (SWD/JTAG)**: If exposed, [Debug Ports](../debug/swd_debug.md) allow full firmware reflash and bypass all software security.
+  Not all vehicles expose debug connectors.
 
 ::: warning
-Signing protects all MAVLink links. The primary physical attack surface is the SD card (key file extraction or deletion).
+Signing protects all MAVLink links.
+The primary physical attack surface is the SD card (key file extraction or deletion).
 If your threat model includes physical access, secure the SD card slot and debug ports.
 :::
 
@@ -68,10 +73,19 @@ If your threat model includes physical access, secure the SD card slot and debug
 
 ### 4. Understand the Limitations
 
-- **No encryption**: Message signing provides authentication and integrity, but messages are sent in plaintext. An eavesdropper can read telemetry and commands but cannot forge them.
-- **Allowlisted messages**: A small set of [safety-critical messages](message_signing.md#unsigned-message-allowlist) (HEARTBEAT, RADIO_STATUS, ADSB_VEHICLE, COLLISION) are always accepted unsigned on all links. An attacker could spoof these specific messages.
-- **Key management**: There is no automatic key rotation. Keys must be reprovisioned manually via a signed `SETUP_SIGNING` message.
-- **Lost key recovery**: If the signing key is lost on all GCS devices, the only recovery is physical: remove the SD card and delete the key file, or reflash via SWD/JTAG. There is no software-only recovery path. See [Message Signing: Lost Key Recovery](message_signing.md#lost-key-recovery) for details.
+- **No encryption**:
+  Message signing provides authentication and integrity, but messages are sent in plaintext.
+  An eavesdropper can read telemetry and commands but cannot forge them.
+- **Allowlisted messages**:
+  A small set of [safety-critical messages](message_signing.md#unsigned-message-allowlist) (`HEARTBEAT`, `RADIO_STATUS`, `ADSB_VEHICLE`, `COLLISION`) are always accepted unsigned on all links.
+  An attacker could spoof these specific messages.
+- **Key management**:
+  There is no automatic key rotation.
+  Keys must be reprovisioned manually via a signed `SETUP_SIGNING` message.
+- **Lost key recovery**:
+  If the signing key is lost on all GCS devices, the only recovery is physical: remove the SD card and delete the key file, or reflash via SWD/JTAG.
+  There is no software-only recovery path.
+  See [Message Signing: Lost Key Recovery](message_signing.md#lost-key-recovery) for details.
 
 ## Integrator Responsibility
 

@@ -13,24 +13,35 @@ When signing is enabled, PX4 appends a 13-byte [signature](https://mavlink.io/en
 Incoming messages are checked against the shared secret key, and unsigned or incorrectly signed messages are rejected (with [exceptions for safety-critical messages](#unsigned-message-allowlist)).
 
 The signing implementation is built into the MAVLink module and is always available, with no special build flags required.
+The key is stored in an SD card:
+
+- **No key on SD card**:
+  Signing is disabled.
+  All messages are sent unsigned and all incoming messages are accepted.
+- **Valid key on SD card**:
+  Signing is active on **all links** (including USB).
+  Outgoing messages are signed.
+  Incoming messages must be signed (with [exceptions](#unsigned-message-allowlist)).
 
 ## Enable/Disable Signing
 
-Signing is controlled entirely through the standard MAVLink [SETUP_SIGNING](https://mavlink.io/en/messages/common.html#SETUP_SIGNING) message, following the [MAVLink signing specification](https://mavlink.io/en/guide/message_signing.html).
+Signing is controlled using the standard MAVLink [SETUP_SIGNING](https://mavlink.io/en/messages/common.html#SETUP_SIGNING) message (as per the [MAVLink signing specification](https://mavlink.io/en/guide/message_signing.html)):
 
-- **No key on SD card**: Signing is disabled. All messages are sent unsigned and all incoming messages are accepted.
-- **Valid key on SD card**: Signing is active on **all links including USB**. Outgoing messages are signed and incoming messages must be signed (with [exceptions](#unsigned-message-allowlist)).
-
-To **enable** signing, send a `SETUP_SIGNING` message with a valid key on any link when no key is currently provisioned (see [Key Provisioning](#key-provisioning)).
-
-To **disable** signing via MAVLink, send a `SETUP_SIGNING` message with an all-zero key and timestamp. This message **must be signed with the current active key**. An unsigned blank-key message is rejected.
-
-To **disable** signing via physical access, remove the key file from the SD card (`/mavlink/mavlink-signing-key.bin`) and reboot, or remove the SD card entirely.
-
-To **change** the signing key, send a `SETUP_SIGNING` message with the new key on any link. When signing is already active, the message must be signed with the current key.
+- To **enable** signing, send a `SETUP_SIGNING` message with a valid key on any link when no key is currently provisioned (see [Key Provisioning](#key-provisioning)).
+- To **disable** signing via MAVLink, send a `SETUP_SIGNING` message with an all-zero key and timestamp.
+  This message **must be signed with the current active key**.
+  An unsigned blank-key message is rejected.
+- To **change** the signing key, send a `SETUP_SIGNING` message with the new key on any link.
+  When signing is already active, the message must be signed with the current key.
 
 ::: warning
-Signing key changes (enable, disable, or rotate) are **rejected while the vehicle is armed**. The vehicle must be disarmed before signing configuration can be changed.
+Signing key changes (enable, disable, or rotate) are **rejected while the vehicle is armed**.
+The vehicle must be disarmed before signing configuration can be changed.
+:::
+
+::: tip
+If the signing key is lost, you can still disable signing if you have physical access to the vehicle.
+Either delete the key file (`/mavlink/mavlink-signing-key.bin`) from the SD card and reboot, or remove the SD card entirely.
 :::
 
 ## Key Provisioning
@@ -46,10 +57,8 @@ PX4 accepts `SETUP_SIGNING` on **any link** (USB, telemetry radio, network, and 
 When signing is **not active** (no key provisioned), the first `SETUP_SIGNING` with a valid key enables signing.
 When signing is **already active**, key changes (including disabling) require that the `SETUP_SIGNING` message is signed with the current key.
 
-::: warning
-`SETUP_SIGNING` is rejected while the vehicle is armed. Disarm before provisioning or changing keys.
-`SETUP_SIGNING` is never forwarded to other links (per the MAVLink specification).
-:::
+Note that `SETUP_SIGNING` is rejected while the vehicle is armed (disarm before provisioning or changing keys).
+As per the MAVLink specification, `SETUP_SIGNING` is never forwarded to other links.
 
 ## Key Storage
 
@@ -78,7 +87,7 @@ A graceful shutdown also writes the current timestamp back, but in practice most
 
 ::: info
 Storage of the key on the SD card means that signing can be disabled by removing the card.
-Note that this requires physical access to the vehicle, and therefore provides the same level of security as allowing signing to be modified via the USB channel.
+Note that this requires physical access to the vehicle.
 :::
 
 ## How It Works
@@ -110,59 +119,66 @@ If the message is unsigned or has an invalid signature, the library calls the `a
 The following messages are **always** accepted unsigned, regardless of the signing state.
 These are safety-critical messages that may originate from systems that don't support signing:
 
-| Message                                                                   | ID  | Reason                                                   |
-| ------------------------------------------------------------------------- | --- | -------------------------------------------------------- |
-| [HEARTBEAT](https://mavlink.io/en/messages/common.html#HEARTBEAT)        | 0   | System discovery and liveness detection                  |
-| [RADIO_STATUS](https://mavlink.io/en/messages/common.html#RADIO_STATUS)  | 109 | Radio link status from SiK radios and other radio modems |
-| [ADSB_VEHICLE](https://mavlink.io/en/messages/common.html#ADSB_VEHICLE)  | 246 | ADS-B traffic information for collision avoidance        |
-| [COLLISION](https://mavlink.io/en/messages/common.html#COLLISION)        | 247 | Collision threat warnings                                |
+| Message                                                                 | ID  | Reason                                                   |
+| ----------------------------------------------------------------------- | --- | -------------------------------------------------------- |
+| [HEARTBEAT](https://mavlink.io/en/messages/common.html#HEARTBEAT)       | 0   | System discovery and liveness detection                  |
+| [RADIO_STATUS](https://mavlink.io/en/messages/common.html#RADIO_STATUS) | 109 | Radio link status from SiK radios and other radio modems |
+| [ADSB_VEHICLE](https://mavlink.io/en/messages/common.html#ADSB_VEHICLE) | 246 | ADS-B traffic information for collision avoidance        |
+| [COLLISION](https://mavlink.io/en/messages/common.html#COLLISION)       | 247 | Collision threat warnings                                |
 
 ## Security Considerations
 
 ### Signing is enforced on all links
 
-When signing is active, **all links require signed messages**, including USB. This means:
+When signing is active, **all links require signed messages**.
+This means:
 
-- An attacker cannot send unsigned commands on any link
-- Changing or disabling the key requires sending a `SETUP_SIGNING` message **signed with the current key**
-- Signing can be disabled via MAVLink by sending a signed `SETUP_SIGNING` with an all-zero key
+- An attacker cannot send unsigned commands on any link.
+- Changing or disabling the key requires sending a `SETUP_SIGNING` message **signed with the current key**.
+- Signing can be disabled via MAVLink by sending a signed `SETUP_SIGNING` with an all-zero key.
 
 ### Armed guard
 
-`SETUP_SIGNING` is rejected while the vehicle is armed. This prevents signing configuration from being changed during flight, whether by accident or by an attacker who has obtained the key.
+`SETUP_SIGNING` is rejected while the vehicle is armed.
+This prevents the signing configuration from being changed during flight, whether by accident or by an attacker who has obtained the key.
 
 ### Lost key recovery
 
 If the signing key is lost on the GCS side and no device has the current key:
 
-- **Remove the SD card** and delete `/mavlink/mavlink-signing-key.bin`, then reboot
-- **Reflash via SWD/JTAG** if the SD card is not accessible
+- **Remove the SD card** and delete `/mavlink/mavlink-signing-key.bin`, then reboot.
+- **Reflash via SWD/JTAG** if the SD card is not accessible.
 
 ::: warning
-There is no software-only recovery path for a lost key. This is intentional: any MAVLink-based recovery mechanism would also be available to an attacker.
+There is no software-only recovery path for a lost key.
+This is intentional: any MAVLink-based recovery mechanism would also be available to an attacker.
 Physical access to the SD card or debug port is required.
 :::
 
 ### Other considerations
 
-- **Initial key provisioning**: When no key is provisioned, `SETUP_SIGNING` is accepted unsigned on any link. Once a key is active, subsequent changes require a signed message. Provision the initial key over a trusted connection.
+- **Initial key provisioning**: When no key is provisioned, `SETUP_SIGNING` is accepted unsigned on any link.
+  Once a key is active, subsequent changes require a signed message.
+  Provision the initial key over a trusted connection, such as USB.
 - **Key not exposed via parameters**: The secret key is stored in a separate file on the SD card, not as a MAVLink parameter, so it cannot be read back through the parameter protocol.
 - **SD card access**: Anyone with physical access to the SD card can read or modify the `mavlink-signing-key.bin` file, or remove the card entirely to disable signing.
   Ensure physical security of the vehicle if signing is used as a security control.
 - **Replay protection**: The MAVLink signing protocol includes a timestamp that prevents replay attacks.
   The on-disk timestamp is updated when a new key is provisioned via `SETUP_SIGNING`.
   A graceful shutdown also persists the current timestamp, but since most vehicles are powered off by pulling the battery, the on-disk timestamp will typically remain at the value from the last key provisioning on reboot.
-- **No encryption**: Message signing provides **authentication and integrity only**. Messages are still sent in plaintext.
+- **No encryption**: Message signing provides **authentication and integrity only**.
+  Messages are still sent in plaintext.
   An eavesdropper can read all message contents (telemetry, commands, parameters, missions) but cannot forge or modify them without the key.
-- **Allowlisted messages bypass signing**: A small set of [safety-critical messages](#unsigned-message-allowlist) are always accepted unsigned. An attacker can spoof these specific messages (e.g. fake `ADSB_VEHICLE` traffic) even when signing is active.
+- **Allowlisted messages bypass signing**: A small set of [safety-critical messages](#unsigned-message-allowlist) are always accepted unsigned.
+  An attacker can spoof these specific messages (e.g. fake `ADSB_VEHICLE` traffic) even when signing is active.
 
 ### What signing does NOT protect against
 
-| Attack | Why |
-|--------|-----|
-| Eavesdropping | Messages are not encrypted |
-| SD card extraction | Key file is readable by anyone with physical access |
-| Spoofed HEARTBEAT/RADIO_STATUS/ADSB/COLLISION | These are allowlisted unsigned |
-| Lost key without SD card access | Requires SWD reflash |
-| Key rotation | No automatic mechanism; manual reprovisioning required |
-| In-flight key changes | `SETUP_SIGNING` rejected while armed |
+| Attack                                                | Why                                                     |
+| ----------------------------------------------------- | ------------------------------------------------------- |
+| Eavesdropping                                         | Messages are not encrypted                              |
+| SD card extraction                                    | Key file is readable by anyone with physical access     |
+| Spoofed `HEARTBEAT`/`RADIO_STATUS`/`ADSB`/`COLLISION` | These are allowlisted unsigned                          |
+| Lost key without SD card access                       | Requires SWD reflash                                    |
+| Key rotation                                          | No automatic mechanism; manual re-provisioning required |
+| In-flight key changes                                 | `SETUP_SIGNING` rejected while armed                    |
