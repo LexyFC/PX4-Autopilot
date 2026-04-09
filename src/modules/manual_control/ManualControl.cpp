@@ -123,14 +123,52 @@ void ManualControl::processInput(hrt_abstime now)
 
 		processStickArming(_selector.setpoint());
 
-		// User override by stick
+		// User override by stick: double-flick gesture (roll right then left, or left then right)
 		const float dt_s = (now - _timestamp_last_loop) / 1e6f;
-		const float minimum_stick_change = 0.01f * _param_com_rc_stick_ov.get();
+		const float flick_threshold = 0.01f * _param_com_rc_stick_ov.get();
+		const float roll = _selector.setpoint().roll;
+		const float roll_rate = _roll_diff.update(roll, dt_s);
+		bool gesture_fired = false;
 
-		_selector.setpoint().sticks_moving = (fabsf(_roll_diff.update(_selector.setpoint().roll, dt_s)) > minimum_stick_change)
-						     || (fabsf(_pitch_diff.update(_selector.setpoint().pitch, dt_s)) > minimum_stick_change)
-						     || (fabsf(_yaw_diff.update(_selector.setpoint().yaw, dt_s)) > minimum_stick_change)
-						     || (fabsf(_throttle_diff.update(_selector.setpoint().throttle, dt_s)) > minimum_stick_change);
+		switch (_flick_state) {
+		case FlickState::Idle:
+
+			// Require active velocity so a statically held or resting stick cannot arm
+			if (roll > flick_threshold && roll_rate > flick_threshold) {
+				_flick_state = FlickState::FirstFlickRight;
+				_flick_timestamp = now;
+
+			} else if (roll < -flick_threshold && roll_rate < -flick_threshold) {
+				_flick_state = FlickState::FirstFlickLeft;
+				_flick_timestamp = now;
+			}
+
+			break;
+
+		case FlickState::FirstFlickRight:
+			if ((now - _flick_timestamp) > (hrt_abstime)(FLICK_WINDOW_S * 1e6f)) {
+				_flick_state = FlickState::Idle;
+
+			} else if (roll < -flick_threshold && roll_rate < -flick_threshold) {
+				gesture_fired = true;
+				_flick_state = FlickState::Idle;
+			}
+
+			break;
+
+		case FlickState::FirstFlickLeft:
+			if ((now - _flick_timestamp) > (hrt_abstime)(FLICK_WINDOW_S * 1e6f)) {
+				_flick_state = FlickState::Idle;
+
+			} else if (roll > flick_threshold && roll_rate > flick_threshold) {
+				gesture_fired = true;
+				_flick_state = FlickState::Idle;
+			}
+
+			break;
+		}
+
+		_selector.setpoint().sticks_moving = gesture_fired;
 
 		_selector.setpoint().timestamp = now;
 		_manual_control_setpoint_pub.publish(_selector.setpoint());
@@ -160,9 +198,8 @@ void ManualControl::processInput(hrt_abstime now)
 		}
 
 		_roll_diff.reset();
-		_pitch_diff.reset();
-		_yaw_diff.reset();
-		_throttle_diff.reset();
+		_flick_state = FlickState::Idle;
+		_flick_timestamp = 0;
 		_stick_arm_hysteresis.set_state_and_update(false, now);
 		_stick_disarm_hysteresis.set_state_and_update(false, now);
 		_stick_kill_hysteresis.set_state_and_update(false, now);

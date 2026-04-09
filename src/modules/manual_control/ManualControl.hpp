@@ -128,9 +128,16 @@ private:
 	systemlib::Hysteresis _button_arm_hysteresis{false};
 
 	MovingDiff _roll_diff{};
-	MovingDiff _pitch_diff{};
-	MovingDiff _yaw_diff{};
-	MovingDiff _throttle_diff{};
+
+	// Double-flick RC override gesture state
+	enum class FlickState : uint8_t {
+		Idle,
+		FirstFlickRight,
+		FirstFlickLeft,
+	};
+	FlickState _flick_state{FlickState::Idle};
+	hrt_abstime _flick_timestamp{0};
+	static constexpr float FLICK_WINDOW_S = 0.5f;
 
 	perf_counter_t	_loop_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")};
 	perf_counter_t	_loop_interval_perf{perf_alloc(PC_INTERVAL, MODULE_NAME": interval")};
