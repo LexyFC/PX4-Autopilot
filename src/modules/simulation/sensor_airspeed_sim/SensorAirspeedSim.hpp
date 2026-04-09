@@ -34,6 +34,7 @@
 #pragma once
 
 #include <lib/perf/perf_counter.h>
+#include <math.h>
 #include <mathlib/mathlib.h>
 #include <px4_platform_common/defines.h>
 #include <px4_platform_common/module.h>
