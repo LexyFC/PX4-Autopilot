@@ -173,13 +173,35 @@ set(config_module_list)
 set(config_kernel_list)
 
 # Find Python
-find_package(PythonInterp 3)
+#
+# Force FindPython3 to prefer the interpreter on PATH (and any activated
+# virtualenv/conda/pyenv environment) so downstream tooling runs under
+# the same Python the developer invoked the build with. On Linux these
+# are already the CMake defaults; the settings exist to normalize
+# behavior on macOS and Windows:
+#
+#   - FIND_FRAMEWORK=LAST prevents FindPython3 from preferring a macOS
+#     Python.framework install (e.g. Homebrew's
+#     /opt/homebrew/Frameworks/Python.framework/...) over a pyenv shim
+#     or venv on PATH, which would otherwise pick an interpreter that
+#     lacks PX4's Python deps (kconfiglib, empy, jinja2, etc.).
+#   - FIND_REGISTRY=NEVER skips the Windows registry lookup for the
+#     same reason.
+#   - FIND_STRATEGY and FIND_VIRTUALENV are set explicitly to make the
+#     intent obvious and insulate us from future default changes.
+set(Python3_FIND_STRATEGY LOCATION)
+set(Python3_FIND_VIRTUALENV FIRST)
+set(Python3_FIND_FRAMEWORK LAST)
+set(Python3_FIND_REGISTRY NEVER)
+find_package(Python3 COMPONENTS Interpreter)
 # We have a custom error message to tell users how to install python3.
-if(NOT PYTHONINTERP_FOUND)
+if(NOT Python3_Interpreter_FOUND)
 	message(FATAL_ERROR "Python 3 not found. Please install Python 3:\n"
 		"    Ubuntu: sudo apt install python3 python3-dev python3-pip\n"
 		"    macOS: brew install python")
 endif()
+# Alias to the legacy variable so downstream CMakeLists keep working.
+set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
 
 option(PYTHON_COVERAGE "Python code coverage" OFF)
 if(PYTHON_COVERAGE)
