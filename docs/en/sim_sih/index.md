@@ -206,8 +206,25 @@ See [Port Reference](#port-reference) for the complete list of ports.
 
 ## SIH on Flight Controller Hardware {#sih-on-flight-controller-hardware}
 
-SIH can also run on flight controller hardware with `SYS_HITL=2`, replacing real sensors with simulated data while running on the actual autopilot.
-See [SIH on Flight Controller Hardware](hardware.md) for setup instructions.
+SIH can also run on flight controller hardware by replacing real sensors with simulated data while running on the actual autopilot. Setting it is a simple as selecting the appropriate SIH airframe. The easiest method to run the SIH Quadrotor X is to set the parameter `SYS_AUTOSTART=1100` then reboot the vehicle. 
+
+::: tip
+To ensure that the vehicles behaves well, it is recommended to reset all the parameters to firmware's default before modifying `SYS_AUTOSTART`.
+:::
+
+The following airframes are supported
+
+| SIH Airframe    | SYS_AUTOSTART | Status            |
+| --------------- | ------------- | ----------------- |
+| Quadrotor X     | 1100          | Stable            |
+| Airplane        | 1101          | Experimental      |
+| Tailsitter Duo  | 1102          | Experimental      |
+| Standard VTOL   | 1103          | Experimental      |
+| Ackermann Rover | 1104          | Experimental      |
+| Hexacopter X    | 1105          | Experimental      |
+
+
+See [SIH on Flight Controller Hardware](hardware.md) for more details and compilation instructions.
 
 ## Adding New Airframes
 
