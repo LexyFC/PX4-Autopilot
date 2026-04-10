@@ -84,8 +84,9 @@ bool get_free_space(const char *path, uint64_t *avail_bytes, uint64_t *total_byt
 bool scan_log_directories(const char *log_root_dir, LogDirInfo &info);
 
 /**
- * Cleanup old logs to ensure sufficient free space. Deletes oldest files
- * using "other type first" logic (sess dirs if we have time, date dirs if not).
+ * Cleanup old logs to ensure sufficient free space. Deletes oldest files,
+ * preferring the opposite directory type first (sess dirs when time is known,
+ * date dirs when it is not), then falls back to its own type.
  * @param log_root_dir log root directory
  * @param mavlink_log_pub mavlink log publisher
  * @param target_free_mb target free space in MB (0 = use default minimum)
@@ -93,7 +94,7 @@ bool scan_log_directories(const char *log_root_dir, LogDirInfo &info);
  * @return 0 on success, 1 if not enough space even after cleanup
  */
 int cleanup_old_logs(const char *log_root_dir, orb_advert_t &mavlink_log_pub,
-		     uint32_t target_free_mb, int32_t max_log_dirs_to_keep = 0);
+		     uint32_t target_free_mb, int32_t max_log_dirs_to_keep);
 
 /**
  * Get UTC time in microseconds from CLOCK_REALTIME

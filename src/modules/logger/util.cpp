@@ -140,8 +140,8 @@ bool scan_log_directories(const char *log_root_dir, LogDirInfo &info)
 int cleanup_old_logs(const char *log_root_dir, orb_advert_t &mavlink_log_pub,
 		     uint32_t target_free_mb, int32_t max_log_dirs_to_keep)
 {
-	uint64_t avail_bytes;
-	uint64_t total_bytes;
+	uint64_t avail_bytes = 0;
+	uint64_t total_bytes = 0;
 
 	if (!get_free_space(log_root_dir, &avail_bytes, &total_bytes)) {
 		return PX4_ERROR;
@@ -248,7 +248,10 @@ int cleanup_old_logs(const char *log_root_dir, orb_advert_t &mavlink_log_pub,
 			break;
 		}
 
-		char oldest_ulg[64] = "";
+		// Max log filename: "12_09_00_replayed.ulg" (21 chars + null = 22 bytes)
+		// Using 64 for margin against unexpected filenames on disk.
+		static constexpr unsigned MAX_LOG_FILENAME_LEN = 64;
+		char oldest_ulg[MAX_LOG_FILENAME_LEN] = "";
 		struct dirent *result = nullptr;
 
 		while ((result = readdir(dp))) {
@@ -309,6 +312,8 @@ int cleanup_old_logs(const char *log_root_dir, orb_advert_t &mavlink_log_pub,
 	if (avail_bytes < 10ULL * 1024ULL * 1024ULL) {  // Less than 10 MiB is critical
 		mavlink_log_critical(&mavlink_log_pub, "[logger] Storage full: %u MiB free\t",
 				     (unsigned)(avail_bytes / 1024U / 1024U));
+		events::send<uint32_t>(events::ID("logger_storage_full"), events::Log::Error,
+				       "Storage full: {1} MiB free", (uint32_t)(avail_bytes / 1024U / 1024U));
 		return 1;
 	}
 
