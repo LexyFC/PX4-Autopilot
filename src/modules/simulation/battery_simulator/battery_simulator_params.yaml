@@ -4,7 +4,7 @@ parameters:
   definitions:
     SIM_BAT_DRAIN:
       description:
-        short: Simulator Battery drain interval
+        short: Simulated battery full-discharge time
         long: |-
           Time in seconds for the simulated battery to drain from 100% to 0% while armed. Set to 0 to disable the battery simulator entirely (useful when battery state is provided externally, e.g. via MAVLink).
       type: float
