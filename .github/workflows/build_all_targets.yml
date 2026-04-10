@@ -72,10 +72,10 @@ jobs:
       timestamp: ${{ steps.set-timestamp.outputs.timestamp }}
       branchname: ${{ steps.set-branch.outputs.branchname }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Cache Python pip
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**./Tools/setup/requirements.txt') }}
@@ -130,13 +130,9 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: runs-on/action@v2
-      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-px4-checkout
         with:
           fetch-depth: 0
-
-      - name: Git ownership workaround
-        run: git config --system --add safe.directory '*'
 
       # ccache key breakdown:
       # ccache-<system os>-<system arch>-<builder group>-
@@ -144,7 +140,7 @@ jobs:
       # ccache-<linux>-<x64>-<nuttx-0>-
       - name: Cache Restore from Key
         id: cc_restore
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: ~/.ccache
           key: ${{ format('ccache-{0}-{1}-{2}', runner.os, matrix.runner, matrix.group) }}
@@ -176,7 +172,7 @@ jobs:
           ./Tools/ci/package_build_artifacts.sh
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: px4_${{matrix.group}}_build_artifacts
           path: artifacts/
@@ -189,7 +185,7 @@ jobs:
 
       - name: Cache Save
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: ~/.ccache
           key: ${{ steps.cc_restore.outputs.cache-primary-key }}
@@ -211,7 +207,7 @@ jobs:
       uploadlocation: ${{ steps.upload-location.outputs.uploadlocation }}
     steps:
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts/
           merge-multiple: true

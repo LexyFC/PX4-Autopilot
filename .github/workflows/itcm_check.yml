@@ -46,14 +46,7 @@ jobs:
               boards/nxp/mr-tropic/nuttx-config/scripts/itcm_functions_includes.ld
               boards/nxp/mr-tropic/nuttx-config/scripts/itcm_static_functions.ld
     steps:
-      - uses: runs-on/action@v2
-
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
-      - name: Git ownership workaround
-        run: git config --system --add safe.directory '*'
+      - uses: ./.github/actions/setup-px4-checkout
 
       - uses: ./.github/actions/setup-ccache
         id: ccache

@@ -42,14 +42,7 @@ jobs:
       PX4_SBOM_DISABLE: 1
 
     steps:
-      - uses: runs-on/action@v2
-
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
-      - name: Git Ownership Workaround
-        run: git config --system --add safe.directory '*'
+      - uses: ./.github/actions/setup-px4-checkout
 
       - uses: ./.github/actions/setup-ccache
         id: ccache
@@ -99,7 +92,7 @@ jobs:
 
       - name: Upload failed logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: failed-${{matrix.config.model}}-logs.zip
           path: |
@@ -113,7 +106,7 @@ jobs:
 
       - name: Upload PX4 coredump
         if: failure() && ${{ hashFiles('px4.core') != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coredump
           path: px4.core
@@ -130,7 +123,7 @@ jobs:
 
       - name: Upload Coverage Information to Codecov
         if: contains(matrix.config.build_type, 'Coverage')
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: mavsdk

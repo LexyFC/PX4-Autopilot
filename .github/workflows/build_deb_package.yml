@@ -39,12 +39,10 @@ jobs:
       px4_version: ${{ steps.version.outputs.px4_version }}
       should_push: ${{ steps.push.outputs.should_push }}
     steps:
-      - uses: runs-on/action@v2
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-px4-checkout
         with:
-          fetch-tags: true
-          submodules: false
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Set PX4 version
         id: version
@@ -135,14 +133,10 @@ jobs:
           - { image: gazebo, repo: px4-sitl-gazebo, target: default, arch: amd64, runner: x64,   platform: "linux/amd64", dockerfile: Dockerfile.gazebo }
           - { image: gazebo, repo: px4-sitl-gazebo, target: default, arch: arm64, runner: arm64, platform: "linux/arm64", dockerfile: Dockerfile.gazebo }
     steps:
-      - uses: runs-on/action@v2
-      - uses: actions/checkout@v6
-        with:
-          submodules: false
-          fetch-depth: 1
+      - uses: ./.github/actions/setup-px4-checkout
 
       - name: Download Noble .deb artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: px4-sitl-debs-${{ matrix.target }}-noble-${{ matrix.arch }}
           path: docker-context
@@ -157,13 +151,13 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
         with:
           driver: docker-container
           platforms: ${{ matrix.platform }}
 
       - name: Build and push container image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: docker-context
           file: Tools/packaging/${{ matrix.dockerfile }}

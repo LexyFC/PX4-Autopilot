@@ -1,0 +1,36 @@
+name: Setup PX4 Checkout
+description: Initialize RunsOn runner, checkout code, and configure git safe directory
+
+inputs:
+  fetch-depth:
+    description: 'Number of commits to fetch (0 for full history)'
+    required: false
+    default: '1'
+  fetch-tags:
+    description: 'Fetch tags'
+    required: false
+    default: 'false'
+  submodules:
+    description: 'Checkout submodules (true, false, or recursive)'
+    required: false
+    default: 'false'
+  ref:
+    description: 'The branch, tag, or SHA to checkout'
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - uses: runs-on/action@v2
+
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: ${{ inputs.fetch-depth }}
+        fetch-tags: ${{ inputs.fetch-tags }}
+        submodules: ${{ inputs.submodules }}
+        ref: ${{ inputs.ref || github.ref }}
+
+    - name: Configure Git Safe Directory
+      shell: bash
+      run: git config --system --add safe.directory '*'
